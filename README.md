@@ -7,13 +7,30 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 
 ## 🧩 パッチ
 
+| パッチ | 初期状態 | 内容 |
+|---|---|---|
+| Extend clipboard history | ON | クリップボードの保持期間を延ばせるようにする |
+| Change app name | ON | アプリ名を変える |
+| Override flags | OFF | 任意のフラグを上書きする（上級者向け） |
+
+ON/OFF だけで使えるパッチは、Morphe Manager の Simple mode でも、何も入力せずにそのまま効きます。
+
+### Extend clipboard history
+
+ピン留めしていないクリップは、通常は1時間で削除されます。
+このパッチを当てると、Gboard の **設定 → クリップボード** に **「クリップボードの履歴を保持する期間」** が出てきて、1・2・3・6・12・18・24時間から選べます。
+中身はフラグ `enable_extended_clipboard_history` を ON にしているだけです（Gboard に元から入っている隠し設定）。
+
 ### Override flags
 
 Gboard のフラグを上書きします。サーバー側の設定（Phenotype）より優先されます。
+設定値の入力が必要なので、Morphe Manager では Expert mode で使ってください。
 
 **仕組み:** Gboard はローカルの初期値、サーバー配信値、OEM値などを1つの最終値にまとめてから使います。
-このパッチはその最終値を返すゲッター（難読化名 `odx.g()`）をフックします。
+内部パッチ（`FlagOverridesHookPatch`）がその最終値を返すゲッター（難読化名 `odx.g()`）をフックします。
 そのため、すべてのフラグ読み取りが extension の `FlagOverridePatch.getFlagValue(name, value)` を通ります。
+各パッチが追加した上書きは、全パッチの実行後（`finalize`）にまとめて extension に書き込まれます。
+同じフラグなら、このパッチのオプションで入れた値が優先されます。
 
 | オプション | 内容 |
 |---|---|
@@ -69,17 +86,22 @@ Gboard **18.4.1.985164140-release-arm64-v8a** で開発しました。
 [Morphe Desktop](https://github.com/MorpheApp/morphe-desktop) の jar に CLI が入っています（`morphe-desktop-<version>-all.jar`）。
 GUI で使う場合も、ビルドした `.mpp` を他のパッチバンドルと同じように読み込めます。
 
-公式 Gboard（Google 署名）の上には入らないので、公式パッチの **Clone app**（パッケージ名の変更）と **Spoof signature** を一緒に当てるのがおすすめです。
-こうすると公式 Gboard と共存できます。
+**スマホだけで作る場合（Morphe Manager）:** **Sources → ＋ → Local** でこの `.mpp` を追加し、ホームの Gboard から普通にパッチします。
+Simple mode なら初期状態が ON のパッチがそのまま当たります。
+公式 Gboard はアンインストールが必要です（Morphe Manager が案内します）。
+
+**公式 Gboard と並べて入れたい場合:** 公式パッチの **Clone app**（パッケージ名の変更）と **Spoof signature** も一緒に当てます。
+Morphe Manager では Expert mode で選べます。
 CLI では `-e` と `-O` は直前の `--patches` に対して効く点に注意してください。
 
 ```sh
 java -jar morphe-desktop-1.18.1-all.jar patch --exclusive \
-  --patches=patches/build/libs/patches-1.0.0.mpp \
-    -e "Override flags" \
+  --patches=patches/build/libs/patches-1.1.0.mpp \
+    -e "Extend clipboard history" \
     -e "Change app name" \
+    -e "Override flags" \
     -O logFlags=true \
-    -O 'flagOverrides=enable_extended_clipboard_history=true' \
+    -O 'flagOverrides=text_clip_item_char_limit=50000' \
   --patches=patches-1.47.0.mpp \
     -e "Clone app" \
     -e "Spoof signature" \
@@ -131,7 +153,7 @@ adb shell am force-stop $PKG
 
 ```sh
 ./gradlew buildAndroid
-# → patches/build/libs/patches-1.0.0.mpp
+# → patches/build/libs/patches-1.1.0.mpp
 ```
 
 Morphe の Gradle プラグインとパッチャーは GitHub Packages にあり、取得には GitHub の認証が必要です。次のどちらかを使ってください。
