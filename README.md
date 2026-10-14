@@ -35,6 +35,11 @@ Gboard のフラグを上書きします。サーバー側の設定（Phenotype�
 
 protobuf（byte[]）のフラグには対応していません。変換できない値は無視され、logcat に警告が出ます。
 
+### Change app name
+
+アプリ名（＝端末のキーボード一覧に出る名前）を変えます。初期値は `Gboard Re0` です。
+Clone app で公式 Gboard と並べて入れたときに見分けるためのものです。
+
 ## 🎮 遊んでみたいフラグ
 
 18.4.1 のコードから見つけたフラグの一覧（型と初期値つき）は [flags-18.4.1.txt](flags-18.4.1.txt) にあります。
@@ -72,6 +77,7 @@ CLI では `-e` と `-O` は直前の `--patches` に対して効く点に注意
 java -jar morphe-desktop-1.18.1-all.jar patch --exclusive \
   --patches=patches/build/libs/patches-1.0.0.mpp \
     -e "Override flags" \
+    -e "Change app name" \
     -O logFlags=true \
     -O 'flagOverrides=enable_extended_clipboard_history=true' \
   --patches=patches-1.47.0.mpp \
