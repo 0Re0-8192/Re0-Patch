@@ -12,6 +12,7 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 | Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
 | Half-width digits in Japanese input | ON | 日本語入力中の数字を、打った瞬間から半角にする。設定にスイッチも追加 |
 | Arrow keys in number keyboards | ON | 数字・電話のキーボードの下に、左右の矢印キーの行を足す |
+| Raise clipboard text limit | ON | クリップボードに残す1件の文字数上限を、2万字から20万字に上げる |
 | Show all clipboard history | ON | 最新5回分しか出ないクリップボードの表示を、保存されている全件にする |
 | Extend clipboard history | OFF | クリップボードの保持期間を最大24時間から選べるようにする |
 | Change app name | ON | アプリ名を変える |
@@ -67,6 +68,13 @@ protobuf は同じメッセージが2回出てきたら中身を合成するの�
 改造版は元のアプリと同じ versionCode なので、更新してもキャッシュが残り、古い定義（矢印キーの割り当てが無いもの）がそのまま使われます。
 そのためこのパッチは、versionCode に `KEYBOARD_CACHE_GENERATION`（今は 1）を足して、新しいキャッシュを使わせます。
 キーボードの定義を変えるパッチをまた変更するときは、この値を増やしてください。
+
+### Raise clipboard text limit
+
+Gboard は、クリップボードに保存するテキストを1件あたり20,000文字で切り捨てます（フラグ `text_clip_item_char_limit`）。
+同じ値が、クリップボードの編集欄の長さ制限にも使われているので、貼り付けられるのもその文字数までです。
+このパッチは上限を200,000文字に上げます。パッチのオプション `limit` で変えられます。
+あまり大きくすると、クリップが入っているデータベースの1行の大きさの制限（約2MB）に当たって、読み込めなくなるかもしれません。
 
 ### Show all clipboard history
 
