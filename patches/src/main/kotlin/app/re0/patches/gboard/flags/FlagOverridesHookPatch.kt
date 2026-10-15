@@ -5,6 +5,7 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.re0.patches.gboard.shared.Constants.COMPATIBILITY_GBOARD
+import app.re0.patches.gboard.shared.extensionPatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
@@ -47,7 +48,7 @@ internal val flagOverridesHookPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)
 
-    extendWith("extensions/extension.mpe")
+    dependsOn(extensionPatch)
 
     execute {
         // The patcher can run several times in one process, such as in Morphe Manager.

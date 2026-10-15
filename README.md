@@ -10,6 +10,7 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 | パッチ | 初期状態 | 内容 |
 |---|---|---|
 | Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
+| Half-width digits in Japanese input | ON | 日本語入力中の数字を、打った瞬間から半角にする。設定にスイッチも追加 |
 | Show all clipboard history | ON | 最新5回分しか出ないクリップボードの表示を、保存されている全件にする |
 | Extend clipboard history | OFF | クリップボードの保持期間を最大24時間から選べるようにする |
 | Change app name | ON | アプリ名を変える |
@@ -23,6 +24,21 @@ ON/OFF だけで使えるパッチは、Morphe Manager の Simple mode でも、
 このパッチは保持期間を決めるメソッド（`ClipboardContentProviderUtils.getUnpinnedItemTimeLimitInMilliSeconds`）が常に100年を返すようにするので、自分で消すまで残ります。
 件数の上限（ピン留めなしで約100件）はそのままです。
 Extend clipboard history と一緒に当てると、こちらが優先されて保持期間の設定は効かなくなります。
+
+### Half-width digits in Japanese input
+
+日本語入力中にQWERTYの数字キーで打った数字は、通常は「１２３」と全角で表示されます。
+このパッチを当てると、打った瞬間から「123」と半角になります。変換候補には全角も残ります。
+
+Gboard の **設定 → キー** に **「数字を常に半角で入力」** のスイッチが増えます（初期値はON）。
+切り替えたあとは、次に入力欄を開いたときに反映されます。
+
+**仕組み:** 日本語変換エンジン（Mozc）は、文字の種類ごとの「全角・半角のルール」（`character_form_rules`）で打った文字を変換します。
+Gboard が渡す設定にはこのルールが無いので、Mozc の初期ルール（数字は入力中も全角）が使われています。
+パッチは、エンジンに送る命令を作っている `LocalSessionHandler.evalCommand` にフックして、設定を送る命令（`SET_CONFIG`）の末尾にルールを足します。
+protobuf は同じメッセージが2回出てきたら中身を合成するので、既存の設定はそのまま残ります。
+ルールが1つでもあると初期ルールは使われなくなるので、Mozc の初期ルール12個をそのまま足したうえで、数字（グループ `"0"`）だけ半角にしています。
+スイッチの値は SharedPreferences の `re0_half_width_digits` に保存されます。
 
 ### Show all clipboard history
 
