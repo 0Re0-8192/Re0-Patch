@@ -13,6 +13,9 @@ private const val KEY_ID_NAME = "re0_softkey_clipboard"
 private const val KEY_VIEW_ID = "@id/$KEY_VIEW_ID_NAME"
 private const val KEY_ID = "@id/$KEY_ID_NAME"
 
+private const val QUESTION_MARK_STRING_NAME = "re0_question_mark"
+private const val QUESTION_MARK_STRING = "@string/$QUESTION_MARK_STRING_NAME"
+
 private const val SPACE_VIEW_ID = "@id/key_pos_space"
 private const val LEFT_ARROW_KEY_ID = "@id/id_0x7f0b1a19"
 
@@ -77,6 +80,15 @@ val clipboardKeyPatch = resourcePatch(
                     },
                 )
             }
+        }
+
+        document("res/values/strings.xml").use { document ->
+            document.documentElement.appendChild(
+                document.createElement("string").apply {
+                    setAttribute("name", QUESTION_MARK_STRING_NAME)
+                    textContent = "?"
+                },
+            )
         }
 
         ROW_LAYOUT_FILES.forEach { path ->
@@ -182,6 +194,8 @@ private fun addKeyBetweenArrows(document: Document, path: String) {
  * Defines the clipboard key next to each definition of the left arrow key.
  */
 private fun addKeyDefinition(document: Document, path: String) {
+    restoreQuestionMarks(document)
+
     val arrows = document.elements("softkey").filter { it.getAttribute("id") == LEFT_ARROW_KEY_ID }
     if (arrows.isEmpty()) {
         throw PatchException("Could not find the left arrow key definition in $path")
@@ -245,5 +259,20 @@ private fun addKeyMappingToNumberBodies(document: Document, path: String) {
         body.appendChild(
             document.createElement("key_mapping").apply { appendChild(newMapping(document)) },
         )
+    }
+}
+
+/**
+ * A value that is only "?" is compiled as a reference to a theme attribute without a name, "?attr/", which the
+ * app then shows as the text, instead of the question mark. Escaping it does not help, so the value becomes a
+ * reference to a string that is "?".
+ */
+private fun restoreQuestionMarks(document: Document) {
+    document.elements("*").forEach { element ->
+        val attributes = element.attributes
+        for (index in 0 until attributes.length) {
+            val attribute = attributes.item(index)
+            if (attribute.nodeValue == "?") attribute.nodeValue = QUESTION_MARK_STRING
+        }
     }
 }
