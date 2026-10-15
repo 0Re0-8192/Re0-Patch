@@ -18,6 +18,7 @@ private const val QUESTION_MARK_STRING = "@string/$QUESTION_MARK_STRING_NAME"
 
 private const val SPACE_VIEW_ID = "@id/key_pos_space"
 private const val GLOBE_VIEW_ID = "@id/key_pos_qwerty_globe"
+private const val COMMA_VIEW_ID = "@id/A02"
 private const val LEFT_ARROW_KEY_ID = "@id/id_0x7f0b1a19"
 
 /** The clipboard icon of the toolbar, and its title. */
@@ -56,9 +57,10 @@ private const val SMILEY_VIEW_ID = "@id/key_pos_switch_to_smiley"
 private const val BACK_VIEW_ID = "@id/key_pos_back_to_prime"
 
 /**
- * Each of the clipboard key and the two arrow keys takes this part of the width of the space key.
+ * The clipboard key and each arrow key take this part of the width of the space key. The space key keeps the rest.
  */
-private const val SPLIT_KEY_SHARE_PERCENT = 20
+private const val SPLIT_CLIPBOARD_SHARE_PERCENT = 30
+private const val SPLIT_ARROW_SHARE_PERCENT = 25
 
 /**
  * Files that define the arrow keys, to put the definition of the clipboard key next to them.
@@ -197,7 +199,8 @@ private fun replaceGlobeKey(globe: Element, leftArrow: Element) {
 }
 
 /**
- * Puts the clipboard key right before the space key (after it in a column), and takes its width from the space
+ * Puts the clipboard key right before the space key, or before the comma key that is before it (after the space
+ * key in a column), and takes its width from the space
  * key. Where the layout has the globe key, the clipboard key takes its place instead, which is left of the
  * space key too.
  */
@@ -218,6 +221,8 @@ private fun addKeyNextToSpace(document: Document, path: String, inColumn: Boolea
 
     // As wide as the key next to the space key, but not much of the space key.
     val neighbor = if (inColumn) space.nextElement() else space.previousElement() ?: space.nextElement()
+    // Where the key before the space key is the comma key, the clipboard key goes before the comma key.
+    val anchor = if (!inColumn && neighbor?.getAttribute("android:id") == COMMA_VIEW_ID) neighbor else space
     val weight = minOf(neighbor?.weightPerKey() ?: Float.MAX_VALUE, spaceWeight * SPACE_SHARE_PERCENT / 100)
     if (weight <= 0 || weight >= spaceWeight) {
         throw PatchException("Unexpected weight of the clipboard key in $path: $weight of $spaceWeight")
@@ -226,7 +231,7 @@ private fun addKeyNextToSpace(document: Document, path: String, inColumn: Boolea
     // The arrow keys have the style of the keys of a row, but a column needs the style of its own keys.
     val key = newKeyView(if (inColumn) space else leftArrow, weight)
     space.setAttribute("android:layout_weight", formatWeight(spaceWeight - weight))
-    space.parentNode.insertBefore(key, if (inColumn) space.nextSibling else space)
+    space.parentNode.insertBefore(key, if (inColumn) space.nextSibling else anchor)
 }
 
 /**
@@ -240,16 +245,17 @@ private fun addKeysAroundSpace(document: Document, path: String) {
         ?: throw PatchException("Expected one back key in $path")
     val spaceWeight = space.weight() ?: throw PatchException("The space key has no weight in $path")
 
-    val weight = (spaceWeight * SPLIT_KEY_SHARE_PERCENT / 100).toInt().toFloat()
+    val clipboardWeight = (spaceWeight * SPLIT_CLIPBOARD_SHARE_PERCENT / 100).toInt().toFloat()
+    val arrowWeight = (spaceWeight * SPLIT_ARROW_SHARE_PERCENT / 100).toInt().toFloat()
     // The keys of the other bottom rows have the same style as the back key, with a key background.
-    fun key(viewId: String) = newKeyView(back, weight).apply { setAttribute("android:id", viewId) }
+    fun key(viewId: String, weight: Float) = newKeyView(back, weight).apply { setAttribute("android:id", viewId) }
 
-    space.setAttribute("android:layout_weight", formatWeight(spaceWeight - weight * 3))
+    space.setAttribute("android:layout_weight", formatWeight(spaceWeight - clipboardWeight - arrowWeight * 2))
     val parent = space.parentNode
-    parent.insertBefore(key(KEY_VIEW_ID), space)
+    parent.insertBefore(key(KEY_VIEW_ID, clipboardWeight), space)
     val next = space.nextSibling
-    parent.insertBefore(key(LEFT_ARROW_VIEW_ID), next)
-    parent.insertBefore(key(RIGHT_ARROW_VIEW_ID), next)
+    parent.insertBefore(key(LEFT_ARROW_VIEW_ID, arrowWeight), next)
+    parent.insertBefore(key(RIGHT_ARROW_VIEW_ID, arrowWeight), next)
 }
 
 /**
