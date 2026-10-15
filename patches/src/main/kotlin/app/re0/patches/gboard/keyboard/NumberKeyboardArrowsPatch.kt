@@ -40,6 +40,16 @@ private const val ARROW_KEY_STYLE = "@style/style_0x7f1506e3"
 private const val ROW_WEIGHT = 250
 private const val ROWS_BEFORE = 4
 
+/**
+ * Gboard keeps the parsed keyboard definitions in a cache on disk. The directory of the cache is named after
+ * the version code of the app, and the patched app has the same version code as the original, so an update
+ * keeps using the definitions parsed before, without the changes of this patch.
+ *
+ * This is added to the version code, so the cache of a new generation is used. Increase it when a patch changes
+ * a keyboard definition again.
+ */
+private const val KEYBOARD_CACHE_GENERATION = 1
+
 @Suppress("unused")
 val numberKeyboardArrowsPatch = resourcePatch(
     name = "Arrow keys in number keyboards",
@@ -50,6 +60,13 @@ val numberKeyboardArrowsPatch = resourcePatch(
     compatibleWith(COMPATIBILITY_GBOARD)
 
     execute {
+        document("AndroidManifest.xml").use { document ->
+            val manifest = document.documentElement
+            val versionCode = manifest.getAttribute("android:versionCode").toIntOrNull()
+                ?: throw PatchException("Could not read the version code")
+            manifest.setAttribute("android:versionCode", (versionCode + KEYBOARD_CACHE_GENERATION).toString())
+        }
+
         NUMBER_LAYOUT_FILES.forEach { path ->
             document(path).use { document -> addArrowRow(document, path) }
         }
