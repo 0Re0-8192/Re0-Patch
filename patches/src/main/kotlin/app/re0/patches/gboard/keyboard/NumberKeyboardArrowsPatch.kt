@@ -31,6 +31,12 @@ private const val RIGHT_ARROW_KEY_ID = "@id/id_0x7f0b2336"
 private const val LEFT_ARROW_VIEW_ID = "@id/key_pos_left_arrow"
 private const val RIGHT_ARROW_VIEW_ID = "@id/key_pos_right_arrow"
 
+/**
+ * The style of the bottom row keys of the other keyboards, which have the arrow keys with a key background.
+ * The style of the keys next to the digits gave arrow keys without a background.
+ */
+private const val ARROW_KEY_STYLE = "@style/style_0x7f1506e3"
+
 private const val ROW_WEIGHT = 250
 private const val ROWS_BEFORE = 4
 
@@ -74,9 +80,9 @@ private fun addArrowRow(document: Document, path: String) {
 
     val arrowRow = lastRow.cloneNode(false) as Element
     listOf(LEFT_ARROW_VIEW_ID, RIGHT_ARROW_VIEW_ID).forEach { viewId ->
-        // Same style as the last key, which is a key of the dark kind next to the digits.
         val key = lastKey.cloneNode(true) as Element
         key.setAttribute("android:id", viewId)
+        key.setAttribute("style", ARROW_KEY_STYLE)
         // Two columns wide.
         key.setAttribute("android:layout_weight", (ROW_WEIGHT * 2).toString())
         arrowRow.appendChild(key)
