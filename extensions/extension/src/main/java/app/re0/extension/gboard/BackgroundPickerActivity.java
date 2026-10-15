@@ -137,6 +137,13 @@ public final class BackgroundPickerActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(root);
+        // The screen is drawn under the system bars, so the content is moved out from under them.
+        scroll.setOnApplyWindowInsetsListener((view, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(
+                    android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return android.view.WindowInsets.CONSUMED;
+        });
         setContentView(scroll);
     }
 
@@ -239,10 +246,14 @@ public final class BackgroundPickerActivity extends Activity {
             Bitmap bitmap = null;
             try {
                 bitmap = type == BackgroundSettings.TYPE_VIDEO ? videoFrame(file) : imageFrame(file);
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                android.util.Log.e("GboardBackground", "Could not make the preview", ex);
             }
             final Bitmap result = bitmap;
             runOnUiThread(() -> {
+                if (result == null) {
+                    status.setText(status.getText() + "\n（プレビューを作れませんでした。キーボードには出るかもしれません）");
+                }
                 frame = result;
                 for (Preview preview : previews) {
                     preview.setFrame(result);
