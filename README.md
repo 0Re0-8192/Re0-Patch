@@ -13,6 +13,7 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 | Half-width digits in Japanese input | ON | 日本語入力中の数字を、打った瞬間から半角にする。設定にスイッチも追加 |
 | Arrow keys in number keyboards | ON | 数字・電話のキーボードの下に、左右の矢印キーの行を足す |
 | Clipboard key | ON | どのキーボードからでもクリップボードを開くキーを足す（スペースの右など）。矢印キーのパッチも使う |
+| Better theme image quality | ON | テーマの画像を新しく選ぶときの読み込み上限を、512pxから2048pxに上げる |
 | Video and image background | ON | キーボードの背景に動画や画像を流す。画面ごとに見せる場所を決められる |
 | Raise clipboard text limit | ON | クリップボードに残す1件の文字数上限を、2万字から20万字に上げる |
 | Show all clipboard history | ON | 最新5回分しか出ないクリップボードの表示を、保存されている全件にする |
@@ -94,6 +95,13 @@ protobuf は同じメッセージが2回出てきたら中身を合成するの�
 
 **「?」キーの修復:** 定義ファイルを書き直すと、値が「?」だけの属性（`data="?"`）が、テーマ属性の参照 `?attr/` としてコンパイルされ、キーに「?attr/」という文字が出てしまいます（`Xyr` の「?」キー）。
 そこで、値が「?」だけの属性は、「?」だけの文字列リソース `re0_question_mark` への参照に置き換えます。他の定義ファイルを書き直すパッチを足すときも、同じ問題に注意してください。
+
+### Better theme image quality
+
+テーマの画像を新しく選ぶとき、`ThemeBuilderActivity` は、画像を最大 512×512 ピクセルで読み込みます（Glide の `override(512, 512)`）。これがキーボードの背景がぼやける原因です。
+このパッチは、その上限を引き上げます（初期値は 2048。オプション `maxSide`、512〜8192）。
+`handleImageUri` のログ文字列を持つメソッドの、`const/16 512` を書き換えます。
+すでに作ったテーマの画像は、読み込み済みの小さい画像なので、変わりません。テーマを作り直してください。
 
 ### Video and image background
 
