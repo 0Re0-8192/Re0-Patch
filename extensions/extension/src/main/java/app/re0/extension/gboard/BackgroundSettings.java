@@ -33,7 +33,7 @@ final class BackgroundSettings {
     private static final float DEFAULT_ASPECT_SMALL = 1.3f;
     private static final float DEFAULT_ASPECT_LARGE = 2.4f;
 
-    static final float MAX_ZOOM = 3f;
+    static final float MAX_ZOOM = 6f;
 
     private BackgroundSettings() {
     }

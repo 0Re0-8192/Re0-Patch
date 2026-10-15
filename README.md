@@ -13,6 +13,7 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 | Half-width digits in Japanese input | ON | 日本語入力中の数字を、打った瞬間から半角にする。設定にスイッチも追加 |
 | Arrow keys in number keyboards | ON | 数字・電話のキーボードの下に、左右の矢印キーの行を足す |
 | Clipboard key | ON | どのキーボードからでもクリップボードを開くキーを足す（スペースの右など）。矢印キーのパッチも使う |
+| Video and GIF in the theme builder | ON | テーマの新規作成で動画・GIFも選べる。切り抜いた場所で動画の背景になる |
 | Better theme image quality | ON | テーマの画像を新しく選ぶときの読み込み上限を、512pxから2048pxに上げる |
 | Video and image background | ON | キーボードの背景に動画や画像を流す。画面ごとに見せる場所を決められる |
 | Raise clipboard text limit | ON | クリップボードに残す1件の文字数上限を、2万字から20万字に上げる |
@@ -95,6 +96,20 @@ protobuf は同じメッセージが2回出てきたら中身を合成するの�
 
 **「?」キーの修復:** 定義ファイルを書き直すと、値が「?」だけの属性（`data="?"`）が、テーマ属性の参照 `?attr/` としてコンパイルされ、キーに「?attr/」という文字が出てしまいます（`Xyr` の「?」キー）。
 そこで、値が「?」だけの属性は、「?」だけの文字列リソース `re0_question_mark` への参照に置き換えます。他の定義ファイルを書き直すパッチを足すときも、同じ問題に注意してください。
+
+### Video and GIF in the theme builder
+
+テーマの画面の「+」（新しいテーマ）の画像選択で、動画と GIF も選べるようにします。選んだ動画や GIF の最初の1コマが、写真と同じように、切り抜きと明るさの調整の画面に流れます。
+テーマを保存すると、その動画や GIF が、キーボードの背景（動画・画像の背景）になります。切り抜いた場所が、そのまま見せる場所になります。
+写真を選んだテーマを保存したときは、動画の背景は切れます。
+
+**仕組み:** 3か所を書き換えます。
+1. `ThemeBuilderActivity.requestImportImage`: 写真選択のリクエストが「画像のみ（`nu`）」なのを、「画像と動画（`nt`）」にします。
+2. `ThemeBuilderActivity.handleImageUri` が、選んだ Uri を `r` に入れた直後に、拡張の `ThemeBuilderHook.onPicked` を呼びます。動画か GIF なら、ファイルを `re0_background.bin.pending` にコピーし始めます。最初の1コマは、Gboard が Glide で読みます（動画も GIF も、Glide が1コマ目の画像にします）。
+3. `UserImageThemeBuilder.save` の先頭で、`ThemeBuilderHook.onSave` を呼びます。コピーした動画を本番のファイルにして、背景を ON にします。
+   テーマが持つ切り抜きの四角（`c`、ユーザーが枠で決めた場所。元の画像の大きさ `l`×`m` に対する四角）を、中心と拡大に直して、閉じた画面と開いた画面の両方に入れます。画面ごとの微調整は、「動画・画像の背景」の画面でできます。
+
+テーマの切り抜きは1つだけで、枠の形は、テーマを作った画面のものです。そのため、もう片方の画面は、同じ中心と拡大が初期値になります。
 
 ### Better theme image quality
 
