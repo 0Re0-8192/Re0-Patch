@@ -9,11 +9,19 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 
 | パッチ | 初期状態 | 内容 |
 |---|---|---|
-| Extend clipboard history | ON | クリップボードの保持期間を延ばせるようにする |
+| Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
+| Extend clipboard history | OFF | クリップボードの保持期間を最大24時間から選べるようにする |
 | Change app name | ON | アプリ名を変える |
 | Override flags | OFF | 任意のフラグを上書きする（上級者向け） |
 
 ON/OFF だけで使えるパッチは、Morphe Manager の Simple mode でも、何も入力せずにそのまま効きます。
+
+### Keep clipboard history forever
+
+ピン留めしていないクリップは、通常は1時間で削除されます。
+このパッチは保持期間を決めるメソッド（`ClipboardContentProviderUtils.getUnpinnedItemTimeLimitInMilliSeconds`）が常に100年を返すようにするので、自分で消すまで残ります。
+件数の上限（ピン留めなしで約100件）はそのままです。
+Extend clipboard history と一緒に当てると、こちらが優先されて保持期間の設定は効かなくなります。
 
 ### Extend clipboard history
 

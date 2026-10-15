@@ -9,8 +9,9 @@ import app.re0.patches.gboard.shared.Constants.COMPATIBILITY_GBOARD
 val extendClipboardHistoryPatch = bytecodePatch(
     name = "Extend clipboard history",
     description = "Unpinned clips are deleted after 1 hour. This adds a setting to keep them for up to " +
-        "24 hours, in Gboard settings > Clipboard > Keep clipboard history for.",
-    default = true,
+        "24 hours, in Gboard settings > Clipboard > Keep clipboard history for. " +
+        "Has no effect together with \"Keep clipboard history forever\".",
+    default = false,
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)
 
