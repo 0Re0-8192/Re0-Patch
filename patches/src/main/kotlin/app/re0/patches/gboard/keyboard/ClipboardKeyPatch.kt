@@ -40,6 +40,27 @@ private val ROW_LAYOUT_FILES = listOf(
 private val COLUMN_LAYOUT_FILES = listOf("res/5nF.xml", "res/Iiq.xml", "res/GeB.xml", "res/O1t.xml")
 
 /**
+ * Japanese number and symbol keyboard, split in two for large screens: the bottom row is the back key,
+ * two symbol keys, the space key, three more keys and the enter key. It has no arrow keys.
+ */
+private val SPLIT_NUMBER_LAYOUT_FILES = listOf("res/B5K.xml", "res/hK2.xml")
+
+/**
+ * Japanese number and symbol keyboard with the 12 keys, for phones and large screens: the left column has the
+ * keys for the undo, the left arrow, the symbols and the input mode.
+ */
+private val TWELVE_KEY_LAYOUT_FILES = listOf("res/3eV.xml", "res/kxO.xml")
+
+private const val SYMBOL_VIEW_ID = "@id/key_pos_switch_to_symbol"
+private const val SMILEY_VIEW_ID = "@id/key_pos_switch_to_smiley"
+private const val BACK_VIEW_ID = "@id/key_pos_back_to_prime"
+
+/**
+ * Each of the clipboard key and the two arrow keys takes this part of the width of the space key.
+ */
+private const val SPLIT_KEY_SHARE_PERCENT = 20
+
+/**
  * Files that define the arrow keys, to put the definition of the clipboard key next to them.
  * Each of them is used by the keyboards with the layouts above.
  */
@@ -100,6 +121,12 @@ val clipboardKeyPatch = resourcePatch(
         }
         NUMBER_LAYOUT_FILES.forEach { path ->
             document(path).use { document -> addKeyBetweenArrows(document, path) }
+        }
+        SPLIT_NUMBER_LAYOUT_FILES.forEach { path ->
+            document(path).use { document -> addKeysAroundSpace(document, path) }
+        }
+        TWELVE_KEY_LAYOUT_FILES.forEach { path ->
+            document(path).use { document -> addKeyToSymbolKeys(document, path) }
         }
 
         KEY_DEFINITION_FILES.forEach { path ->
@@ -200,6 +227,46 @@ private fun addKeyNextToSpace(document: Document, path: String, inColumn: Boolea
     val key = newKeyView(if (inColumn) space else leftArrow, weight)
     space.setAttribute("android:layout_weight", formatWeight(spaceWeight - weight))
     space.parentNode.insertBefore(key, if (inColumn) space.nextSibling else space)
+}
+
+/**
+ * Split number keyboard: the clipboard key goes left of the space key, and the arrow keys right of it. The three
+ * keys take their width from the space key.
+ */
+private fun addKeysAroundSpace(document: Document, path: String) {
+    val space = document.keyViews(SPACE_VIEW_ID).singleOrNull()
+        ?: throw PatchException("Expected one space key in $path")
+    val back = document.keyViews(BACK_VIEW_ID).singleOrNull()
+        ?: throw PatchException("Expected one back key in $path")
+    val spaceWeight = space.weight() ?: throw PatchException("The space key has no weight in $path")
+
+    val weight = (spaceWeight * SPLIT_KEY_SHARE_PERCENT / 100).toInt().toFloat()
+    // The keys of the other bottom rows have the same style as the back key, with a key background.
+    fun key(viewId: String) = newKeyView(back, weight).apply { setAttribute("android:id", viewId) }
+
+    space.setAttribute("android:layout_weight", formatWeight(spaceWeight - weight * 3))
+    val parent = space.parentNode
+    parent.insertBefore(key(KEY_VIEW_ID), space)
+    val next = space.nextSibling
+    parent.insertBefore(key(LEFT_ARROW_VIEW_ID), next)
+    parent.insertBefore(key(RIGHT_ARROW_VIEW_ID), next)
+}
+
+/**
+ * 12-key keyboard: the symbol key shares its place with the smiley key, which is hidden unless the keyboard asks
+ * for it. The clipboard key is the third key of that place, so the column keeps its number of keys.
+ */
+private fun addKeyToSymbolKeys(document: Document, path: String) {
+    val smiley = document.keyViews(SMILEY_VIEW_ID).singleOrNull()
+        ?: throw PatchException("Expected one smiley key in $path")
+    val symbol = document.keyViews(SYMBOL_VIEW_ID).singleOrNull()
+        ?: throw PatchException("Expected one symbol key in $path")
+    if (symbol.parentNode != smiley.parentNode) {
+        throw PatchException("The symbol key and the smiley key are in different places in $path")
+    }
+
+    val weight = smiley.weight() ?: throw PatchException("The smiley key has no weight in $path")
+    smiley.parentNode.insertBefore(newKeyView(smiley, weight), smiley.nextSibling)
 }
 
 /**
