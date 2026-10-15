@@ -17,6 +17,7 @@ private const val QUESTION_MARK_STRING_NAME = "re0_question_mark"
 private const val QUESTION_MARK_STRING = "@string/$QUESTION_MARK_STRING_NAME"
 
 private const val SPACE_VIEW_ID = "@id/key_pos_space"
+private const val GLOBE_VIEW_ID = "@id/key_pos_qwerty_globe"
 private const val LEFT_ARROW_KEY_ID = "@id/id_0x7f0b1a19"
 
 /** The clipboard icon of the toolbar, and its title. */
@@ -152,13 +153,31 @@ private fun newKeyView(template: Element, weight: Float) = (template.cloneNode(f
 }
 
 /**
+ * The key left of the space key in the letter keyboards is the language switch key (the globe). The same key
+ * turns into a "?" key while typing Japanese. This replaces it with the clipboard key, which takes the same
+ * space, so the row has no extra key.
+ */
+private fun replaceGlobeKey(globe: Element, leftArrow: Element) {
+    globe.setAttribute("android:id", KEY_VIEW_ID)
+    globe.setAttribute("style", leftArrow.getAttribute("style"))
+    globe.setAttribute("android:visibility", "gone")
+}
+
+/**
  * Puts the clipboard key right after the space key, and takes its width from the space key.
+ * Where the layout has the globe key, the clipboard key takes its place instead.
  */
 private fun addKeyAfterSpace(document: Document, path: String, inColumn: Boolean) {
     val space = document.keyViews(SPACE_VIEW_ID).singleOrNull()
         ?: throw PatchException("Expected one space key in $path")
     val leftArrow = document.keyViews(LEFT_ARROW_VIEW_ID).singleOrNull()
         ?: throw PatchException("Expected one left arrow key in $path")
+
+    val globe = document.keyViews(GLOBE_VIEW_ID).singleOrNull()
+    if (globe != null && !inColumn) {
+        replaceGlobeKey(globe, leftArrow)
+        return
+    }
 
     val spaceWeight = space.weight()
         ?: throw PatchException("The space key has no weight in $path")
