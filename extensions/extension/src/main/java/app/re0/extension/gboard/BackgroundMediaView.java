@@ -28,6 +28,8 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
     /** The longest side of a decoded image, so a large photo does not use too much memory. */
     private static final int MAX_IMAGE_SIDE = 4096;
 
+    private static final long WATCHDOG_MILLIS = 1000;
+
     private final BackgroundTransform transform = new BackgroundTransform();
     private final Matrix matrix = new Matrix();
 
@@ -44,6 +46,24 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
     private Surface surface;
     private boolean prepared;
 
+    /**
+     * While the view is attached, checks once a second that the media plays when the keyboard is shown. A callback
+     * that was missed, such as when the keyboard is closed and opened again at once, would leave it frozen.
+     */
+    private final Runnable watchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (!isAttachedToWindow()) {
+                return;
+            }
+            if (getWindowVisibility() == VISIBLE) {
+                playing = true;
+                play();
+            }
+            postDelayed(this, WATCHDOG_MILLIS);
+        }
+    };
+
     BackgroundMediaView(Context context) {
         super(context);
         setWillNotDraw(false);
@@ -54,11 +74,14 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
         super.onAttachedToWindow();
         playing = getWindowVisibility() == VISIBLE;
         refresh();
+        removeCallbacks(watchdog);
+        postDelayed(watchdog, WATCHDOG_MILLIS);
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        removeCallbacks(watchdog);
         release();
         loadedVersion = -1;
     }
@@ -206,7 +229,10 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
-        startPlayer(texture);
+        playing = playing || getWindowVisibility() == VISIBLE;
+        if (playing) {
+            startPlayer(texture);
+        }
     }
 
     @Override
@@ -242,7 +268,7 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
             });
             mediaPlayer.setOnPreparedListener(mp -> {
                 prepared = true;
-                if (playing) {
+                if (playing || getWindowVisibility() == VISIBLE) {
                     mp.start();
                 }
             });
@@ -304,7 +330,10 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
         if (!playing) {
             return;
         }
-        if (player != null && prepared && !player.isPlaying()) {
+        // The player is made again each time the keyboard is shown, which is more reliable than resuming it.
+        if (textureView != null && player == null && textureView.isAvailable()) {
+            startPlayer(textureView.getSurfaceTexture());
+        } else if (player != null && prepared && !player.isPlaying()) {
             player.start();
         }
         if (image instanceof AnimatedImageDrawable) {
@@ -313,9 +342,7 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
     }
 
     private void pause() {
-        if (player != null && prepared && player.isPlaying()) {
-            player.pause();
-        }
+        releasePlayer();
         if (image instanceof AnimatedImageDrawable) {
             ((AnimatedImageDrawable) image).stop();
         }
