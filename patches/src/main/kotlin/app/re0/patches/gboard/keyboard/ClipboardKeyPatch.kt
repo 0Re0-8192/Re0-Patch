@@ -93,10 +93,10 @@ val clipboardKeyPatch = resourcePatch(
         }
 
         ROW_LAYOUT_FILES.forEach { path ->
-            document(path).use { document -> addKeyAfterSpace(document, path, inColumn = false) }
+            document(path).use { document -> addKeyNextToSpace(document, path, inColumn = false) }
         }
         COLUMN_LAYOUT_FILES.forEach { path ->
-            document(path).use { document -> addKeyAfterSpace(document, path, inColumn = true) }
+            document(path).use { document -> addKeyNextToSpace(document, path, inColumn = true) }
         }
         NUMBER_LAYOUT_FILES.forEach { path ->
             document(path).use { document -> addKeyBetweenArrows(document, path) }
@@ -123,6 +123,12 @@ private fun Document.elements(tag: String) =
 /** The space key of some layouts is a SplittableSoftKeyView, so any element with the id counts. */
 private fun Document.keyViews(viewId: String) =
     elements("*").filter { it.getAttribute("android:id") == viewId }
+
+private fun Node.previousElement(): Element? {
+    var node = previousSibling
+    while (node != null && node !is Element) node = node.previousSibling
+    return node as Element?
+}
 
 private fun Node.nextElement(): Element? {
     var node = nextSibling
@@ -164,10 +170,11 @@ private fun replaceGlobeKey(globe: Element, leftArrow: Element) {
 }
 
 /**
- * Puts the clipboard key right after the space key, and takes its width from the space key.
- * Where the layout has the globe key, the clipboard key takes its place instead.
+ * Puts the clipboard key right before the space key (after it in a column), and takes its width from the space
+ * key. Where the layout has the globe key, the clipboard key takes its place instead, which is left of the
+ * space key too.
  */
-private fun addKeyAfterSpace(document: Document, path: String, inColumn: Boolean) {
+private fun addKeyNextToSpace(document: Document, path: String, inColumn: Boolean) {
     val space = document.keyViews(SPACE_VIEW_ID).singleOrNull()
         ?: throw PatchException("Expected one space key in $path")
     val leftArrow = document.keyViews(LEFT_ARROW_VIEW_ID).singleOrNull()
@@ -183,7 +190,7 @@ private fun addKeyAfterSpace(document: Document, path: String, inColumn: Boolean
         ?: throw PatchException("The space key has no weight in $path")
 
     // As wide as the key next to the space key, but not much of the space key.
-    val neighbor = space.nextElement()
+    val neighbor = if (inColumn) space.nextElement() else space.previousElement() ?: space.nextElement()
     val weight = minOf(neighbor?.weightPerKey() ?: Float.MAX_VALUE, spaceWeight * SPACE_SHARE_PERCENT / 100)
     if (weight <= 0 || weight >= spaceWeight) {
         throw PatchException("Unexpected weight of the clipboard key in $path: $weight of $spaceWeight")
@@ -192,7 +199,7 @@ private fun addKeyAfterSpace(document: Document, path: String, inColumn: Boolean
     // The arrow keys have the style of the keys of a row, but a column needs the style of its own keys.
     val key = newKeyView(if (inColumn) space else leftArrow, weight)
     space.setAttribute("android:layout_weight", formatWeight(spaceWeight - weight))
-    space.parentNode.insertBefore(key, space.nextSibling)
+    space.parentNode.insertBefore(key, if (inColumn) space.nextSibling else space)
 }
 
 /**
