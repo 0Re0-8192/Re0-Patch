@@ -1,8 +1,6 @@
 package app.re0.extension.gboard;
 
 import android.app.Application;
-import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
@@ -182,14 +180,7 @@ public final class JapaneseDigitsPatch {
         if (application == null) {
             return true;
         }
-
-        try {
-            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(application);
-            return preferences.getBoolean(PREFERENCE_KEY, true);
-        } catch (Exception ex) {
-            Log.w(TAG, "Could not read the setting, using the default");
-            return true;
-        }
+        return SettingsReader.getBoolean(application, PREFERENCE_KEY, true);
     }
 
     /**

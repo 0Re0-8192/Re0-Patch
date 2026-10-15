@@ -1,13 +1,11 @@
 package app.re0.extension.gboard;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
 
@@ -147,13 +145,8 @@ public final class AnimatedBackgroundPatch {
         }
         settingsReadAt = now;
 
-        try {
-            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-            colorEnabled = preferences.getBoolean(COLOR_PREFERENCE_KEY, true);
-            panEnabled = preferences.getBoolean(PAN_PREFERENCE_KEY, true);
-        } catch (Exception ex) {
-            Log.w(TAG, "Could not read the settings, using the defaults");
-        }
+        colorEnabled = SettingsReader.getBoolean(context, COLOR_PREFERENCE_KEY, true);
+        panEnabled = SettingsReader.getBoolean(context, PAN_PREFERENCE_KEY, true);
     }
 
     /**
