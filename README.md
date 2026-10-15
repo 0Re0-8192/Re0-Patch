@@ -11,6 +11,7 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 |---|---|---|
 | Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
 | Half-width digits in Japanese input | ON | 日本語入力中の数字を、打った瞬間から半角にする。設定にスイッチも追加 |
+| Arrow keys in number keyboards | ON | 数字・電話のキーボードの下に、左右の矢印キーの行を足す |
 | Show all clipboard history | ON | 最新5回分しか出ないクリップボードの表示を、保存されている全件にする |
 | Extend clipboard history | OFF | クリップボードの保持期間を最大24時間から選べるようにする |
 | Change app name | ON | アプリ名を変える |
@@ -46,6 +47,20 @@ protobuf は同じメッセージが2回出てきたら中身を合成するの�
 長さが変わらないので、protobuf の長さなどは書き換えずに済みます。
 数字・英字の直後以外（記号の候補としての「．」など）は触りません。
 スイッチの値は SharedPreferences の `re0_half_width_digits` に保存されます。
+
+### Arrow keys in number keyboards
+
+数字だけの入力欄（数値・電話番号など）のキーボードには、カーソルを動かすキーがありません。
+このパッチは、そのキーボードの一番下に、左右の矢印キーだけの行を足します（右キーと左キーが半分ずつ）。
+矢印キーの上や下にスライドすると、カーソルが上や下に動きます。
+
+対象は、数値・数字だけ・小数の入力欄（`LatinNumberKeyboard`）と、電話番号の入力欄（`LatinDialKeyboard`）です。
+暗証番号の入力欄（3列のテンキー）や、大きなタブレット用の電話キーボードは、まだ対象外です。
+
+**仕組み:** キーボードの見た目は「レイアウト」（キーの枠の並び）と、「キー対応表」（どの枠がどのキーか）で決まります。
+数字キーボードのレイアウト（`IwS`・`v73`）に、左右キーの枠 `key_pos_left_arrow` と `key_pos_right_arrow` が入った行を足し、高さの配分を5行分に直します。
+キーボードの定義（`elQ`・`gJw`・`4ht`）には、QWERTY などで使われている左右キーの定義を読み込ませて、新しい枠に結びつけます。
+キーの高さは5行で分け合うので、元の4行より少し低くなります。
 
 ### Show all clipboard history
 
