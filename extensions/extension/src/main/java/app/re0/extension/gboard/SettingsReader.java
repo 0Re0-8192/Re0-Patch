@@ -19,6 +19,19 @@ final class SettingsReader {
     private SettingsReader() {
     }
 
+    /**
+     * @return The preferences the Gboard settings screen writes, and that the patches read and write.
+     */
+    static SharedPreferences preferences(Context context) {
+        Context application = context.getApplicationContext();
+        if (application == null) {
+            application = context;
+        }
+        Context deviceProtected = application.isDeviceProtectedStorage()
+                ? application : application.createDeviceProtectedStorageContext();
+        return PreferenceManager.getDefaultSharedPreferences(deviceProtected != null ? deviceProtected : application);
+    }
+
     static boolean getBoolean(Context context, String key, boolean defaultValue) {
         try {
             Context application = context.getApplicationContext();
