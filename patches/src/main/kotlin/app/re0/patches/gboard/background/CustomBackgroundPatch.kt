@@ -1,6 +1,7 @@
 package app.re0.patches.gboard.background
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
@@ -8,7 +9,9 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMuta
 import app.re0.patches.gboard.shared.Constants.COMPATIBILITY_GBOARD
 import app.re0.patches.gboard.shared.extensionPatch
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import org.w3c.dom.Element
 
@@ -19,6 +22,15 @@ private const val EXTENSION_CLASS = "Lapp/re0/extension/gboard/BackgroundMedia;"
  * It fills the keyboard, so the video or the image goes in it.
  */
 private const val THEME_BACKGROUND_VIEW_CLASS = "Lcom/google/android/libraries/inputmethod/widgets/ShrinkableFrameView;"
+
+private const val THEME_HOOK_CLASS = "Lapp/re0/extension/gboard/ThemeScreenHook;"
+
+/**
+ * The fragment of the theme screen. The method that creates its view returns the FrameLayout with the grid of the
+ * themes: onCreateView(LayoutInflater, ViewGroup, Bundle).
+ */
+private const val THEME_LISTING_FRAGMENT_CLASS =
+    "Lcom/google/android/apps/inputmethod/libs/theme/listing/ThemeListingFragment;"
 
 private const val PICKER_ACTIVITY = "app.re0.extension.gboard.BackgroundPickerActivity"
 private const val APP_PACKAGE = "com.google.android.inputmethod.latin"
@@ -88,6 +100,8 @@ val customBackgroundPatch = bytecodePatch(
     dependsOn(extensionPatch, pickerResourcesPatch)
 
     execute {
+        addThemeScreenEntry()
+
         val view = mutableClassDefBy(THEME_BACKGROUND_VIEW_CLASS)
 
         val attached = view.methods.singleOrNull { it.name == "onAttachedToWindow" && it.parameterTypes.isEmpty() }
@@ -112,5 +126,35 @@ val customBackgroundPatch = bytecodePatch(
                 )
             },
         )
+    }
+}
+
+/**
+ * Passes the view that the theme screen creates through the extension, which adds the entry of the picker.
+ * Every return of a view is hooked, so it does not matter which one is the normal path. The extension ignores null.
+ */
+private fun BytecodePatchContext.addThemeScreenEntry() {
+    val fragment = mutableClassDefBy(THEME_LISTING_FRAGMENT_CLASS)
+    val method = fragment.methods.singleOrNull {
+        it.returnType == "Landroid/view/View;" && it.parameterTypes.map { type -> type.toString() } == listOf(
+            "Landroid/view/LayoutInflater;",
+            "Landroid/view/ViewGroup;",
+            "Landroid/os/Bundle;",
+        )
+    } ?: throw PatchException("Could not find the method that creates the view of $THEME_LISTING_FRAGMENT_CLASS")
+
+    val returns = method.implementation!!.instructions.withIndex()
+        .filter { it.value.opcode == Opcode.RETURN_OBJECT }
+        .map { it.index to (it.value as OneRegisterInstruction).registerA }
+    if (returns.isEmpty()) {
+        throw PatchException("The method that creates the view of $THEME_LISTING_FRAGMENT_CLASS has no return")
+    }
+
+    // From the last to the first, so the indexes stay valid.
+    for ((index, register) in returns.asReversed()) {
+        if (register > 15) {
+            throw PatchException("The register v$register is out of range")
+        }
+        method.addInstructions(index, "invoke-static { v$register }, $THEME_HOOK_CLASS->decorate(Landroid/view/View;)V")
     }
 }
