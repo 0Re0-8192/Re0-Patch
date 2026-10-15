@@ -10,18 +10,19 @@ import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewParent;
 
 import java.util.WeakHashMap;
 
 /**
  * Moves the background of the keyboard slowly.
  * <p>
- * {@code SoftKeyboardView}, the view of the keys, calls {@link #onAttached(View)} when it is attached, and
- * {@link #draw(View, Canvas)} after its background is drawn and before the keys are. Two effects are drawn there:
+ * Two views call this class when they are attached ({@link #onAttached(View)}), and after their background is
+ * drawn, before their children ({@link #drawColor(View, Canvas)} and {@link #drawPan(View, Canvas)}):
  * <ul>
- * <li>Pan: the background image, if there is one, is drawn again, a little larger and moving in a slow loop.</li>
- * <li>Color: a color that slowly changes its hue is drawn over the background.</li>
+ * <li>{@code SoftKeyboardView}, the view of the keys (the header and the body): a color that slowly changes its
+ * hue is drawn over its background.</li>
+ * <li>{@code ShrinkableFrameView}, the view behind the keys that has the background of the theme, such as an
+ * image: the background is drawn again, a little larger and moving in a slow loop.</li>
  * </ul>
  * Both are switches in the Gboard settings. The view is redrawn about 25 times a second, only while it is shown.
  */
@@ -49,7 +50,6 @@ public final class AnimatedBackgroundPatch {
     private static final float PAN_PERIOD_Y_MILLIS = 53_000f;
 
     private static final float[] hsv = new float[3];
-    private static final int[] location = new int[2];
     private static final WeakHashMap<View, Ticker> TICKERS = new WeakHashMap<>();
 
     private static boolean colorEnabled = true;
@@ -79,69 +79,57 @@ public final class AnimatedBackgroundPatch {
     }
 
     /**
-     * Injection point. Called from onDraw of the keyboard view, after its background is drawn.
+     * Injection point. Called from onDraw of the view of the keys, after its background is drawn.
+     * Draws the color that changes its hue.
      */
-    public static void draw(View view, Canvas canvas) {
+    public static void drawColor(View view, Canvas canvas) {
         try {
             readSettings(view.getContext());
-            if (!panEnabled && !colorEnabled) {
+            if (!colorEnabled) {
                 return;
             }
 
             long now = SystemClock.uptimeMillis();
-            if (panEnabled) {
-                drawPan(view, canvas, now);
-            }
-            if (colorEnabled) {
-                hsv[0] = (now % (long) COLOR_PERIOD_MILLIS) / COLOR_PERIOD_MILLIS * 360f;
-                hsv[1] = COLOR_SATURATION;
-                hsv[2] = COLOR_VALUE;
-                canvas.drawColor(Color.HSVToColor(COLOR_ALPHA, hsv));
-            }
+            hsv[0] = (now % (long) COLOR_PERIOD_MILLIS) / COLOR_PERIOD_MILLIS * 360f;
+            hsv[1] = COLOR_SATURATION;
+            hsv[2] = COLOR_VALUE;
+            canvas.drawColor(Color.HSVToColor(COLOR_ALPHA, hsv));
         } catch (Exception ex) {
-            Log.e(TAG, "draw failure", ex);
+            Log.e(TAG, "drawColor failure", ex);
         }
     }
 
     /**
-     * Draws the background image again, moved and enlarged. The image is the background of the view, or, if the view
-     * has none, of the nearest parent that has an image.
+     * Injection point. Called from onDraw of the view that has the background of the theme, which is behind the
+     * keys, after its background is drawn. Draws the background image again, a little larger and moved.
      */
-    private static void drawPan(View view, Canvas canvas, long now) {
-        View owner = view;
-        Drawable background = image(owner);
-        while (background == null) {
-            ViewParent parent = owner.getParent();
-            if (!(parent instanceof View)) {
+    public static void drawPan(View view, Canvas canvas) {
+        try {
+            readSettings(view.getContext());
+            if (!panEnabled) {
                 return;
             }
-            owner = (View) parent;
-            background = image(owner);
-        }
 
-        int width = owner.getWidth();
-        int height = owner.getHeight();
-        if (width <= 0 || height <= 0) {
-            return;
-        }
+            Drawable background = image(view);
+            int width = view.getWidth();
+            int height = view.getHeight();
+            if (background == null || width <= 0 || height <= 0) {
+                return;
+            }
 
-        float dx = (float) Math.sin(now / PAN_PERIOD_X_MILLIS * 2 * Math.PI) * width * PAN_RANGE;
-        float dy = (float) Math.cos(now / PAN_PERIOD_Y_MILLIS * 2 * Math.PI) * height * PAN_RANGE;
+            long now = SystemClock.uptimeMillis();
+            float dx = (float) Math.sin(now / PAN_PERIOD_X_MILLIS * 2 * Math.PI) * width * PAN_RANGE;
+            float dy = (float) Math.cos(now / PAN_PERIOD_Y_MILLIS * 2 * Math.PI) * height * PAN_RANGE;
 
-        canvas.save();
-        if (owner != view) {
-            // The canvas has the origin at the view, the image at the owner.
-            view.getLocationInWindow(location);
-            int viewX = location[0];
-            int viewY = location[1];
-            owner.getLocationInWindow(location);
-            canvas.translate(location[0] - viewX, location[1] - viewY);
+            canvas.save();
+            canvas.translate(width / 2f + dx, height / 2f + dy);
+            canvas.scale(PAN_SCALE, PAN_SCALE);
+            canvas.translate(-width / 2f, -height / 2f);
+            background.draw(canvas);
+            canvas.restore();
+        } catch (Exception ex) {
+            Log.e(TAG, "drawPan failure", ex);
         }
-        canvas.translate(width / 2f + dx, height / 2f + dy);
-        canvas.scale(PAN_SCALE, PAN_SCALE);
-        canvas.translate(-width / 2f, -height / 2f);
-        background.draw(canvas);
-        canvas.restore();
     }
 
     /**

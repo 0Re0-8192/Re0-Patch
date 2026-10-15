@@ -1,6 +1,7 @@
 package app.re0.patches.gboard.background
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
@@ -19,6 +20,11 @@ private const val EXTENSION_CLASS = "Lapp/re0/extension/gboard/AnimatedBackgroun
  * The view of the keys. Its layout is the keyboard header and body, each with the background of the theme.
  */
 private const val KEYBOARD_VIEW_CLASS = "Lcom/google/android/libraries/inputmethod/widgets/SoftKeyboardView;"
+
+/**
+ * The view behind the keys that has the background of the theme, such as the image (the tag ".keyboard-background").
+ */
+private const val THEME_BACKGROUND_VIEW_CLASS = "Lcom/google/android/libraries/inputmethod/widgets/ShrinkableFrameView;"
 
 /**
  * Keys of the switches. Must be the same as in the extension.
@@ -83,44 +89,64 @@ val animatedBackgroundPatch = bytecodePatch(
     dependsOn(extensionPatch, addSettingsSwitchesPatch)
 
     execute {
-        val keyboardView = mutableClassDefBy(KEYBOARD_VIEW_CLASS)
+        hookView(KEYBOARD_VIEW_CLASS, "drawColor")
+        hookView(THEME_BACKGROUND_VIEW_CLASS, "drawPan")
+    }
+}
 
-        // Starts the redraw loop, when the view is attached to the window.
-        val attached = keyboardView.methods.singleOrNull {
-            it.name == "onAttachedToWindow" && it.parameterTypes.isEmpty()
-        } ?: throw PatchException("Could not find onAttachedToWindow in $KEYBOARD_VIEW_CLASS")
-        attached.addInstructions(
-            0,
-            "invoke-static { p0 }, $EXTENSION_CLASS->onAttached(Landroid/view/View;)V",
-        )
+/**
+ * Starts the redraw loop when the view is attached to the window, and draws an effect after the background of the
+ * view, before its children.
+ *
+ * @param drawMethod The method of the extension to call from onDraw.
+ */
+private fun BytecodePatchContext.hookView(viewClass: String, drawMethod: String) {
+    val view = mutableClassDefBy(viewClass)
+    val superClass = view.superclass ?: throw PatchException("$viewClass has no superclass")
 
-        if (keyboardView.methods.any { it.name == "onDraw" }) {
-            throw PatchException("$KEYBOARD_VIEW_CLASS already has onDraw")
-        }
-
-        // Draws the effects after the background and before the keys.
-        val superClass = keyboardView.superclass
-            ?: throw PatchException("$KEYBOARD_VIEW_CLASS has no superclass")
-        keyboardView.methods.add(
+    val attached = view.methods.singleOrNull { it.name == "onAttachedToWindow" && it.parameterTypes.isEmpty() }
+    if (attached != null) {
+        attached.addInstructions(0, "invoke-static { p0 }, $EXTENSION_CLASS->onAttached(Landroid/view/View;)V")
+    } else {
+        view.methods.add(
             ImmutableMethod(
-                keyboardView.type,
-                "onDraw",
-                listOf(ImmutableMethodParameter("Landroid/graphics/Canvas;", null, null)),
-                "V",
-                AccessFlags.PROTECTED.value,
-                null,
-                null,
-                MutableMethodImplementation(2),
+                view.type, "onAttachedToWindow", listOf(), "V", AccessFlags.PROTECTED.value, null, null,
+                MutableMethodImplementation(1),
             ).toMutable().apply {
                 addInstructions(
                     0,
                     """
-                        invoke-super { p0, p1 }, $superClass->onDraw(Landroid/graphics/Canvas;)V
-                        invoke-static { p0, p1 }, $EXTENSION_CLASS->draw(Landroid/view/View;Landroid/graphics/Canvas;)V
+                        invoke-super { p0 }, $superClass->onAttachedToWindow()V
+                        invoke-static { p0 }, $EXTENSION_CLASS->onAttached(Landroid/view/View;)V
                         return-void
                     """,
                 )
             },
         )
     }
+
+    if (view.methods.any { it.name == "onDraw" }) {
+        throw PatchException("$viewClass already has onDraw")
+    }
+    view.methods.add(
+        ImmutableMethod(
+            view.type,
+            "onDraw",
+            listOf(ImmutableMethodParameter("Landroid/graphics/Canvas;", null, null)),
+            "V",
+            AccessFlags.PROTECTED.value,
+            null,
+            null,
+            MutableMethodImplementation(2),
+        ).toMutable().apply {
+            addInstructions(
+                0,
+                """
+                    invoke-super { p0, p1 }, $superClass->onDraw(Landroid/graphics/Canvas;)V
+                    invoke-static { p0, p1 }, $EXTENSION_CLASS->$drawMethod(Landroid/view/View;Landroid/graphics/Canvas;)V
+                    return-void
+                """,
+            )
+        },
+    )
 }
