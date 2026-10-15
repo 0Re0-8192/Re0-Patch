@@ -10,6 +10,7 @@ Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Mor
 | パッチ | 初期状態 | 内容 |
 |---|---|---|
 | Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
+| Show all clipboard history | ON | 最新5回分しか出ないクリップボードの表示を、保存されている全件にする |
 | Extend clipboard history | OFF | クリップボードの保持期間を最大24時間から選べるようにする |
 | Change app name | ON | アプリ名を変える |
 | Override flags | OFF | 任意のフラグを上書きする（上級者向け） |
@@ -22,6 +23,14 @@ ON/OFF だけで使えるパッチは、Morphe Manager の Simple mode でも、
 このパッチは保持期間を決めるメソッド（`ClipboardContentProviderUtils.getUnpinnedItemTimeLimitInMilliSeconds`）が常に100年を返すようにするので、自分で消すまで残ります。
 件数の上限（ピン留めなしで約100件）はそのままです。
 Extend clipboard history と一緒に当てると、こちらが優先されて保持期間の設定は効かなくなります。
+
+### Show all clipboard history
+
+Gboard のクリップボード画面の「最近」には、**最新5回分のコピー**しか表示されません（同じ時刻のクリップは1回分として数えます）。
+さらに、表示した中で一番古いクリップの時刻を `clipboard_unpinned_item_threshold_time` に保存し、次からはそれより古いものを検索しなくなります。
+そのため、6回目より前のクリップは保存されていても二度と表示されません。
+このパッチは5回分の上限（`if (copies >= 5) break;`）を外し、保存された時刻での絞り込みも無視して、保存されている全件（ピン留めなしで約100件まで）を表示します。
+同じ上限は古い検索処理にもあるので、Gboard の初期値どおりフラグ `enable_clipboard_query_refactoring` を ON に固定し、新しい方を必ず使わせます。
 
 ### Extend clipboard history
 
