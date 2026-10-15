@@ -3,33 +3,34 @@ package app.re0.patches.gboard.keyboard
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.resourcePatch
 import app.re0.patches.gboard.shared.Constants.COMPATIBILITY_GBOARD
+import app.re0.patches.gboard.shared.keyboardCachePatch
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 
-private const val SOFT_KEY_VIEW = "com.google.android.libraries.inputmethod.widgets.SoftKeyView"
+internal const val SOFT_KEY_VIEW = "com.google.android.libraries.inputmethod.widgets.SoftKeyView"
 
 /**
  * Layouts of the number and phone keyboards. They have 4 rows of 4 keys, and the last key is
  * key_pos_ime_action. The first is for phones, the other for large tablets in the normal and split modes.
  */
-private val NUMBER_LAYOUT_FILES = listOf("res/IwS.xml", "res/v73.xml")
-private val NUMBER_LAYOUT_REFERENCES = setOf("@layout/layout_0x7f0e0594", "@layout/layout_0x7f0e0595")
+internal val NUMBER_LAYOUT_FILES = listOf("res/IwS.xml", "res/v73.xml")
+internal val NUMBER_LAYOUT_REFERENCES = setOf("@layout/layout_0x7f0e0594", "@layout/layout_0x7f0e0595")
 
 /**
  * Keyboard definitions that use the layouts. LatinNumberKeyboard for the number inputs (two of them),
  * and LatinDialKeyboard for the phone number input.
  */
-private val KEYBOARD_DEFINITION_FILES = listOf("res/elQ.xml", "res/gJw.xml", "res/4ht.xml")
+internal val KEYBOARD_DEFINITION_FILES = listOf("res/elQ.xml", "res/gJw.xml", "res/4ht.xml")
 
 /**
  * The definition of the keys that already exist in the other keyboards: the left and right arrow keys.
  * Sliding up and down on them are the up and down arrows.
  */
-private const val ARROW_KEYS_DEFINITION = "@xml/xml_0x7f17104a"
+internal const val ARROW_KEYS_DEFINITION = "@xml/xml_0x7f17104a"
 private const val LEFT_ARROW_KEY_ID = "@id/id_0x7f0b1a19"
 private const val RIGHT_ARROW_KEY_ID = "@id/id_0x7f0b2336"
-private const val LEFT_ARROW_VIEW_ID = "@id/key_pos_left_arrow"
-private const val RIGHT_ARROW_VIEW_ID = "@id/key_pos_right_arrow"
+internal const val LEFT_ARROW_VIEW_ID = "@id/key_pos_left_arrow"
+internal const val RIGHT_ARROW_VIEW_ID = "@id/key_pos_right_arrow"
 
 /**
  * The style of the bottom row keys of the other keyboards, which have the arrow keys with a key background.
@@ -37,18 +38,8 @@ private const val RIGHT_ARROW_VIEW_ID = "@id/key_pos_right_arrow"
  */
 private const val ARROW_KEY_STYLE = "@style/style_0x7f1506e3"
 
-private const val ROW_WEIGHT = 250
+internal const val ROW_WEIGHT = 250
 private const val ROWS_BEFORE = 4
-
-/**
- * Gboard keeps the parsed keyboard definitions in a cache on disk. The directory of the cache is named after
- * the version code of the app, and the patched app has the same version code as the original, so an update
- * keeps using the definitions parsed before, without the changes of this patch.
- *
- * This is added to the version code, so the cache of a new generation is used. Increase it when a patch changes
- * a keyboard definition again.
- */
-private const val KEYBOARD_CACHE_GENERATION = 1
 
 @Suppress("unused")
 val numberKeyboardArrowsPatch = resourcePatch(
@@ -59,14 +50,9 @@ val numberKeyboardArrowsPatch = resourcePatch(
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)
 
-    execute {
-        document("AndroidManifest.xml").use { document ->
-            val manifest = document.documentElement
-            val versionCode = manifest.getAttribute("android:versionCode").toIntOrNull()
-                ?: throw PatchException("Could not read the version code")
-            manifest.setAttribute("android:versionCode", (versionCode + KEYBOARD_CACHE_GENERATION).toString())
-        }
+    dependsOn(keyboardCachePatch)
 
+    execute {
         NUMBER_LAYOUT_FILES.forEach { path ->
             document(path).use { document -> addArrowRow(document, path) }
         }
