@@ -3,24 +3,33 @@ package app.re0.extension.gboard;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageDecoder;
+import android.graphics.Outline;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.Paint;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.Size;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
@@ -41,61 +50,105 @@ public final class BackgroundPickerActivity extends Activity {
     private static final int REQUEST_PICK = 1;
     private static final int PREVIEW_SIDE = 1600;
 
+    private static final int MAX_CONTENT_DP = 640;
+
     private TextView status;
     private Switch enabledSwitch;
     private Preview[] previews;
     private Bitmap frame;
     private boolean updating;
+    private LinearLayout content;
+    private Palette palette;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // The screen has its own title, in the style of the Gboard settings.
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
-        setTitle("背景の動画・画像");
+        palette = new Palette(this);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(16);
-        root.setPadding(pad, pad, pad, pad);
+        content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), 0, dp(16), dp(32));
 
+        // The top bar: a back arrow and the title.
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        TextView back = new TextView(this);
+        back.setText("←");
+        back.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        back.setTextColor(palette.text);
+        back.setGravity(Gravity.CENTER);
+        back.setOnClickListener(v -> finish());
+        bar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        content.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
+
+        TextView title = new TextView(this);
+        title.setText("背景の動画・画像");
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        title.setTextColor(palette.text);
+        title.setPadding(dp(8), dp(8), dp(8), dp(20));
+        content.addView(title);
+
+        // Card: the file and the switch.
+        LinearLayout fileCard = card();
+        TextView fileLabel = label("ファイル");
+        fileCard.addView(fileLabel);
         status = new TextView(this);
-        status.setTextSize(15);
-        root.addView(status);
-
-        Button pick = new Button(this);
-        pick.setText("動画か画像を選ぶ");
+        status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        status.setTextColor(palette.text);
+        status.setPadding(0, dp(2), 0, dp(12));
+        fileCard.addView(status);
+        Button pick = tonalButton("動画か画像を選ぶ");
         pick.setOnClickListener(v -> pickMedia());
-        root.addView(pick);
+        fileCard.addView(pick);
 
         enabledSwitch = new Switch(this);
         enabledSwitch.setText("背景に表示する");
+        enabledSwitch.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        enabledSwitch.setTextColor(palette.text);
+        enabledSwitch.setSwitchPadding(dp(8));
         enabledSwitch.setOnCheckedChangeListener((CompoundButton button, boolean checked) -> {
             if (!updating) {
                 BackgroundSettings.saveEnabled(this, checked);
             }
         });
-        root.addView(enabledSwitch);
+        LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        switchParams.topMargin = dp(16);
+        fileCard.addView(enabledSwitch, switchParams);
 
-        TextView note = new TextView(this);
-        note.setTextSize(12);
-        note.setText("キーボードのテーマは、写真の背景（キーの後ろが透ける）にしてください。"
+        TextView note = label("キーボードのテーマは、写真の背景（キーの後ろが透ける）にしてください。"
                 + "単色のテーマでは、動画や画像がキーの下に隠れます。動画は音なしで、くり返し再生します。");
-        root.addView(note);
+        note.setPadding(0, dp(12), 0, 0);
+        fileCard.addView(note);
+        content.addView(fileCard);
 
+        // One card for each screen: the part that is shown.
         previews = new Preview[2];
         String[] titles = {"閉じた画面（スマホの画面）", "開いた画面（広い画面）"};
         for (int mode = BackgroundSettings.MODE_SMALL; mode <= BackgroundSettings.MODE_LARGE; mode++) {
-            TextView title = new TextView(this);
-            title.setText(titles[mode]);
-            title.setTextSize(16);
-            title.setPadding(0, dp(20), 0, dp(4));
-            root.addView(title);
+            LinearLayout screenCard = card();
+            TextView screenTitle = new TextView(this);
+            screenTitle.setText(titles[mode]);
+            screenTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            screenTitle.setTextColor(palette.text);
+            screenTitle.setPadding(0, 0, 0, dp(12));
+            screenCard.addView(screenTitle);
 
-            previews[mode] = new Preview(this, mode);
-            root.addView(previews[mode]);
+            final Preview preview = new Preview(this, mode, palette);
+            previews[mode] = preview;
+            screenCard.addView(preview);
 
-            final Preview preview = previews[mode];
+            TextView zoomLabel = label("拡大");
+            zoomLabel.setPadding(0, dp(12), 0, 0);
+            screenCard.addView(zoomLabel);
+
             SeekBar zoom = new SeekBar(this);
             zoom.setMax(100);
+            zoom.setProgressTintList(ColorStateList.valueOf(palette.accent));
+            zoom.setThumbTintList(ColorStateList.valueOf(palette.accent));
             preview.zoomBar = zoom;
             zoom.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 @Override
@@ -115,28 +168,34 @@ public final class BackgroundPickerActivity extends Activity {
                     preview.save();
                 }
             });
-            root.addView(zoom);
+            screenCard.addView(zoom);
 
-            TextView hint = new TextView(this);
-            hint.setTextSize(12);
-            hint.setText("指でずらして、2本の指かバーで拡大します");
-            root.addView(hint);
+            TextView hint = label("指でずらして場所を決め、2本の指かバーで拡大します");
+            screenCard.addView(hint);
+            content.addView(screenCard);
         }
 
-        Button delete = new Button(this);
-        delete.setText("動画・画像を消す");
+        Button delete = tonalButton("動画・画像を消す");
+        delete.setTextColor(palette.danger);
         delete.setOnClickListener(v -> {
             BackgroundSettings.mediaFile(this).delete();
             BackgroundSettings.saveMedia(this, BackgroundSettings.TYPE_NONE, "");
             loadState();
         });
         LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        deleteParams.topMargin = dp(24);
-        root.addView(delete, deleteParams);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        deleteParams.topMargin = dp(8);
+        content.addView(delete, deleteParams);
+
+        // The content is not wider than a phone, and in the middle on a large screen.
+        FrameLayout holder = new FrameLayout(this);
+        holder.addView(content, new FrameLayout.LayoutParams(contentWidth(), ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER_HORIZONTAL));
 
         ScrollView scroll = new ScrollView(this);
-        scroll.addView(root);
+        scroll.setBackgroundColor(palette.background);
+        scroll.setFillViewport(true);
+        scroll.addView(holder);
         // The screen is drawn under the system bars, so the content is moved out from under them.
         scroll.setOnApplyWindowInsetsListener((view, insets) -> {
             android.graphics.Insets bars = insets.getInsets(
@@ -145,6 +204,103 @@ public final class BackgroundPickerActivity extends Activity {
             return android.view.WindowInsets.CONSUMED;
         });
         setContentView(scroll);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        ViewGroup.LayoutParams params = content.getLayoutParams();
+        params.width = contentWidth();
+        content.setLayoutParams(params);
+        for (Preview preview : previews) {
+            preview.load();
+        }
+    }
+
+    private int contentWidth() {
+        return Math.min(getResources().getDisplayMetrics().widthPixels, dp(MAX_CONTENT_DP));
+    }
+
+    private LinearLayout card() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(20), dp(20), dp(20), dp(20));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(palette.card);
+        background.setCornerRadius(dp(28));
+        card.setBackground(background);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = dp(12);
+        card.setLayoutParams(params);
+        return card;
+    }
+
+    private TextView label(String text) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        view.setTextColor(palette.subText);
+        return view;
+    }
+
+    private Button tonalButton(String text) {
+        Button button = new Button(this);
+        button.setText(text);
+        button.setAllCaps(false);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        button.setTextColor(palette.onAccentContainer);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(palette.accentContainer);
+        background.setCornerRadius(dp(100));
+        button.setBackground(background);
+        button.setStateListAnimator(null);
+        return button;
+    }
+
+    /**
+     * The colors of the screen. They follow the colors of the system (Material You) and the dark mode, so the screen
+     * looks like the settings of Gboard.
+     */
+    private static final class Palette {
+        final int background;
+        final int card;
+        final int text;
+        final int subText;
+        final int accent;
+        final int accentContainer;
+        final int onAccentContainer;
+        final int danger;
+
+        Palette(Context context) {
+            boolean night = (context.getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+            boolean dynamic = Build.VERSION.SDK_INT >= 31;
+
+            background = night ? color(context, dynamic, android.R.color.system_neutral1_900, 0xFF131314)
+                    : color(context, dynamic, android.R.color.system_neutral1_10, 0xFFF4F5F7);
+            card = night ? color(context, dynamic, android.R.color.system_neutral2_800, 0xFF212224)
+                    : color(context, dynamic, android.R.color.system_neutral1_0, 0xFFFFFFFF);
+            text = night ? color(context, dynamic, android.R.color.system_neutral1_100, 0xFFE6E6E9)
+                    : color(context, dynamic, android.R.color.system_neutral1_900, 0xFF1B1B1F);
+            subText = night ? color(context, dynamic, android.R.color.system_neutral2_300, 0xFFC4C6D0)
+                    : color(context, dynamic, android.R.color.system_neutral2_600, 0xFF5E6064);
+            accent = night ? color(context, dynamic, android.R.color.system_accent1_200, 0xFFA8C7FA)
+                    : color(context, dynamic, android.R.color.system_accent1_600, 0xFF0B57D0);
+            accentContainer = night ? color(context, dynamic, android.R.color.system_accent1_700, 0xFF0842A0)
+                    : color(context, dynamic, android.R.color.system_accent1_100, 0xFFD3E3FD);
+            onAccentContainer = night ? color(context, dynamic, android.R.color.system_accent1_100, 0xFFD3E3FD)
+                    : color(context, dynamic, android.R.color.system_accent1_900, 0xFF041E49);
+            danger = night ? 0xFFF2B8B5 : 0xFFB3261E;
+        }
+
+        private static int color(Context context, boolean dynamic, int resource, int fallback) {
+            try {
+                return dynamic ? context.getColor(resource) : fallback;
+            } catch (Exception ex) {
+                return fallback;
+            }
+        }
     }
 
     @Override
@@ -299,7 +455,6 @@ public final class BackgroundPickerActivity extends Activity {
         private final int mode;
         private final BackgroundTransform transform = new BackgroundTransform();
         private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-        private final Paint border = new Paint();
         private final ScaleGestureDetector scaleDetector;
 
         float centerX = 0.5f;
@@ -311,13 +466,18 @@ public final class BackgroundPickerActivity extends Activity {
         private float lastX;
         private float lastY;
 
-        Preview(Context context, int mode) {
+        Preview(Context context, int mode, Palette palette) {
             super(context);
             this.mode = mode;
-            border.setColor(Color.GRAY);
-            border.setStyle(Paint.Style.STROKE);
-            border.setStrokeWidth(4f);
-            setBackgroundColor(Color.DKGRAY);
+            setBackgroundColor(Color.argb(40, 128, 128, 128));
+            final float radius = 16 * context.getResources().getDisplayMetrics().density;
+            setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                }
+            });
+            setClipToOutline(true);
             setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -378,7 +538,6 @@ public final class BackgroundPickerActivity extends Activity {
                 canvas.drawBitmap(bitmap, 0, 0, paint);
                 canvas.restore();
             }
-            canvas.drawRect(0, 0, getWidth(), getHeight(), border);
         }
 
         @Override
