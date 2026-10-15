@@ -50,7 +50,8 @@ public final class JapaneseDigitsPatch {
     private static final int WIRE_32_BIT = 5;
 
     /**
-     * The default rules of Mozc, from CreateDefaultConfig in config_handler.cc.
+     * The default rules of Mozc, from CreateDefaultConfig in config_handler.cc,
+     * except that the rule of ".," is half width.
      * Each is the group, the form while typing, and the form of the conversion result.
      * The rule of the digits, group "0", is set separately.
      */
@@ -58,7 +59,9 @@ public final class JapaneseDigitsPatch {
             {"ア", FULL_WIDTH, FULL_WIDTH},
             {"A", FULL_WIDTH, LAST_FORM},
             {"(){}[]", FULL_WIDTH, LAST_FORM},
-            {".,", FULL_WIDTH, LAST_FORM},
+            // Also half width, which makes "。" and "、" typed after a digit "." and ",".
+            // Mozc turns them into the full width "．" and "，" in that case, and they are in this group.
+            {".,", HALF_WIDTH, HALF_WIDTH},
             {"。、", FULL_WIDTH, FULL_WIDTH},
             {"・「」", FULL_WIDTH, FULL_WIDTH},
             {"\"'", FULL_WIDTH, LAST_FORM},
