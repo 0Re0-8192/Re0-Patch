@@ -7,7 +7,9 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.re0.patches.gboard.shared.Constants.COMPATIBILITY_GBOARD
 import app.re0.patches.gboard.shared.extensionPatch
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import org.w3c.dom.Element
 
 private const val EXTENSION_CLASS = "Lapp/re0/extension/gboard/JapaneseDigitsPatch;"
@@ -44,8 +46,8 @@ private val addSettingsSwitchPatch = resourcePatch(
                 setAttribute("android:title", "数字を常に半角で入力")
                 setAttribute(
                     "android:summary",
-                    "日本語入力中に数字キーで打った数字と、数字のあとの「。」「、」を、最初から半角にします。" +
-                        "変換候補には全角も出ます。" +
+                    "日本語入力中に数字キーで打った数字を、最初から半角にします。変換候補には全角も出ます。" +
+                        "数字のあとの「。」「、」は、そのまま「。」「、」にします。" +
                         "切り替えたあとは、入力欄を開き直すと反映されます",
                 )
                 setAttribute("android:defaultValue", "true")
@@ -60,7 +62,8 @@ private val addSettingsSwitchPatch = resourcePatch(
 val halfWidthDigitsPatch = bytecodePatch(
     name = "Half-width digits in Japanese input",
     description = "Digits typed in Japanese input are half width from the start, instead of full width. " +
-        "A period or comma typed after a digit is half width too. " +
+        "A Japanese period or comma typed after a digit stays as it is, and is not changed to " +
+        "the full width \".\" or \",\". " +
         "Full width digits stay in the conversion candidates. " +
         "Adds a switch to Gboard settings > Keys.",
     default = true,
@@ -80,6 +83,25 @@ val halfWidthDigitsPatch = bytecodePatch(
         if (commandRegister > 15) {
             throw PatchException("The command register v$commandRegister is out of range")
         }
+
+        val resultInstruction = method.getInstruction(callIndex + 1)
+        if (resultInstruction.opcode != Opcode.MOVE_RESULT_OBJECT) {
+            throw PatchException("Unexpected instruction after MozcJni.evalCommand: ${resultInstruction.opcode}")
+        }
+        val outputRegister = (resultInstruction as OneRegisterInstruction).registerA
+        if (outputRegister > 15) {
+            throw PatchException("The output register v$outputRegister is out of range")
+        }
+
+        // Pass the serialized output of the engine through the extension, right after it is received.
+        // Added first, because the other injection shifts the instruction index.
+        method.addInstructions(
+            callIndex + 2,
+            """
+                invoke-static { v$outputRegister }, $EXTENSION_CLASS->adjustOutput([B)[B
+                move-result-object v$outputRegister
+            """,
+        )
 
         // Pass the serialized command through the extension, right before it is sent to the engine.
         method.addInstructions(

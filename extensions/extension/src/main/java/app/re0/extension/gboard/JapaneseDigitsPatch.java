@@ -21,6 +21,10 @@ import java.nio.charset.StandardCharsets;
  * Appending works because a protobuf message that appears twice is merged by the parser.
  * Mozc uses its default rules only when the config has none, so all default rules are added here,
  * and only the rule for digits is different. Full width digits stay in the candidates.
+ * <p>
+ * Mozc also turns "。" and "、" typed after a digit or a letter into the full width "．" and "，", and
+ * this cannot be turned off. Both are as long as the originals in UTF-8, so {@link #adjustOutput(byte[])}
+ * changes them back in the output of the engine, so "1。" stays "1。".
  */
 @SuppressWarnings("unused")
 public final class JapaneseDigitsPatch {
@@ -50,8 +54,7 @@ public final class JapaneseDigitsPatch {
     private static final int WIRE_32_BIT = 5;
 
     /**
-     * The default rules of Mozc, from CreateDefaultConfig in config_handler.cc,
-     * except that the rule of ".," is half width.
+     * The default rules of Mozc, from CreateDefaultConfig in config_handler.cc.
      * Each is the group, the form while typing, and the form of the conversion result.
      * The rule of the digits, group "0", is set separately.
      */
@@ -59,9 +62,7 @@ public final class JapaneseDigitsPatch {
             {"ア", FULL_WIDTH, FULL_WIDTH},
             {"A", FULL_WIDTH, LAST_FORM},
             {"(){}[]", FULL_WIDTH, LAST_FORM},
-            // Also half width, which makes "。" and "、" typed after a digit "." and ",".
-            // Mozc turns them into the full width "．" and "，" in that case, and they are in this group.
-            {".,", HALF_WIDTH, HALF_WIDTH},
+            {".,", FULL_WIDTH, LAST_FORM},
             {"。、", FULL_WIDTH, FULL_WIDTH},
             {"・「」", FULL_WIDTH, FULL_WIDTH},
             {"\"'", FULL_WIDTH, LAST_FORM},
@@ -104,6 +105,76 @@ public final class JapaneseDigitsPatch {
             Log.e(TAG, "adjustCommand failure", ex);
             return command;
         }
+    }
+
+    /**
+     * Injection point. Called with the serialized output of the engine, before Gboard reads it.
+     * Changes "．" and "，" after a digit or a letter back to "。" and "、".
+     * The characters are 3 bytes long in UTF-8 as the ones they are changed to, so nothing else
+     * in the serialized message, such as the length of a string, needs to change.
+     *
+     * @param output A serialized Mozc {@code commands::Command}.
+     * @return The output to use instead.
+     */
+    public static byte[] adjustOutput(byte[] output) {
+        try {
+            if (output == null) {
+                return output;
+            }
+
+            byte[] adjusted = null;
+            // 0xEF 0xBC 0x8E is "．" (U+FF0E), and 0xEF 0xBC 0x8C is "，" (U+FF0C).
+            for (int i = 1; i + 2 < output.length; i++) {
+                if (output[i] != (byte) 0xEF || output[i + 1] != (byte) 0xBC) {
+                    continue;
+                }
+                boolean period = output[i + 2] == (byte) 0x8E;
+                if (!period && output[i + 2] != (byte) 0x8C) {
+                    continue;
+                }
+                if (!endsWithAlphanumeric(output, i)) {
+                    continue;
+                }
+                if (adjusted == null) {
+                    // The setting is read only when there is something to change.
+                    if (!isEnabled()) {
+                        return output;
+                    }
+                    adjusted = output.clone();
+                }
+
+                // "。" is U+3002 (0xE3 0x80 0x82), and "、" is U+3001 (0xE3 0x80 0x81).
+                adjusted[i] = (byte) 0xE3;
+                adjusted[i + 1] = (byte) 0x80;
+                adjusted[i + 2] = period ? (byte) 0x82 : (byte) 0x81;
+                i += 2;
+            }
+            return adjusted != null ? adjusted : output;
+        } catch (Exception ex) {
+            Log.e(TAG, "adjustOutput failure", ex);
+            return output;
+        }
+    }
+
+    /**
+     * @return Whether the character before the index is an ASCII or a full width digit or letter.
+     */
+    static boolean endsWithAlphanumeric(byte[] data, int index) {
+        int previous = data[index - 1] & 0xFF;
+        if ((previous >= '0' && previous <= '9') || (previous >= 'A' && previous <= 'Z')
+                || (previous >= 'a' && previous <= 'z')) {
+            return true;
+        }
+
+        if (index < 3 || (data[index - 3] & 0xFF) != 0xEF) {
+            return false;
+        }
+        int second = data[index - 2] & 0xFF;
+        // Full width digits U+FF10..FF19, upper case letters U+FF21..FF3A, lower case letters U+FF41..FF5A.
+        if (second == 0xBC) {
+            return (previous >= 0x90 && previous <= 0x99) || (previous >= 0xA1 && previous <= 0xBA);
+        }
+        return second == 0xBD && previous >= 0x81 && previous <= 0x9A;
     }
 
     private static boolean isEnabled() {
