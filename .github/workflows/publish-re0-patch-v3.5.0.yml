@@ -1,0 +1,48 @@
+name: Publish Re0 Patch v3.5.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-re0-patch-v3.5.0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release artifact
+        uses: actions/checkout@v4
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset="releases/re0-gboard-patches-3.5.0.mpp"
+          test -s "$asset"
+          if gh release view v3.5.0 >/dev/null 2>&1; then
+            echo "v3.5.0 is already published; not changing it."
+            exit 0
+          fi
+          cat > /tmp/re0-release-notes.md <<'NOTES'
+          Gboard 18.4.1 (arm64-v8a) 向けの Morphe 対応パッチ集です。
+
+          主な機能:
+          - 折りたたみ時・展開時で個別に設定できる動画・GIF・画像背景
+          - クリップボードキーの追加、履歴・文字数上限の拡張
+          - 数字キーボードの左右矢印キー、日本語入力の数字の半角化
+          - テーマ画像の画質改善
+
+          導入: Morphe Manager の Sources → ＋ → Local で添付の .mpp を読み込んでください。
+
+          注意: Galaxy Z Fold 7 以外は未検証です。mp4 再生も十分に検証できていません。Morphe 公式プロジェクトとは無関係です。
+          NOTES
+          gh release create v3.5.0 "$asset" \
+            --target "$GITHUB_SHA" \
+            --title "Re0 Patch v3.5.0" \
+            --notes-file /tmp/re0-release-notes.md
