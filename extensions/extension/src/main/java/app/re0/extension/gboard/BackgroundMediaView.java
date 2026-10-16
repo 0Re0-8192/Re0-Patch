@@ -73,6 +73,7 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         playing = getWindowVisibility() == VISIBLE;
+        BackgroundSettings.log(getContext(), "keyboard: attached, shown=" + playing);
         refresh();
         removeCallbacks(watchdog);
         postDelayed(watchdog, WATCHDOG_MILLIS);
@@ -136,6 +137,8 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
             if (!enabled || type == BackgroundSettings.TYPE_NONE || !file.isFile()) {
                 if (loadedType != BackgroundSettings.TYPE_NONE) {
                     release();
+                    BackgroundSettings.log(context, "keyboard: off (enabled=" + enabled + ", type=" + type
+                            + ", file=" + file.isFile() + ")");
                 }
                 loadedVersion = -1;
                 return;
@@ -150,6 +153,7 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
             release();
             loadedVersion = version;
             loadedType = type;
+            BackgroundSettings.log(context, "keyboard: load type=" + type + ", " + file.length() / 1024 + "KB");
             if (type == BackgroundSettings.TYPE_VIDEO) {
                 loadVideo();
             } else {
@@ -182,6 +186,9 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
                     image = decoded;
                     mediaWidth = decoded.getIntrinsicWidth();
                     mediaHeight = decoded.getIntrinsicHeight();
+                    BackgroundSettings.log(getContext(), "keyboard: image " + mediaWidth + "x" + mediaHeight
+                            + ", animated=" + (decoded instanceof AnimatedImageDrawable)
+                            + ", shown=" + playing + ", view=" + getWidth() + "x" + getHeight());
                     decoded.setCallback(this);
                     if (decoded instanceof AnimatedImageDrawable) {
                         ((AnimatedImageDrawable) decoded).setRepeatCount(AnimatedImageDrawable.REPEAT_INFINITE);
@@ -191,6 +198,7 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
                 });
             } catch (Exception ex) {
                 Log.e(TAG, "Could not decode the image", ex);
+                BackgroundSettings.log(getContext(), "keyboard: image failed: " + ex);
             }
         }, "GboardBackgroundImage").start();
     }
@@ -274,6 +282,7 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
             });
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                 Log.e(TAG, "The video failed: " + what + " " + extra);
+                BackgroundSettings.log(getContext(), "keyboard: video failed " + what + " " + extra);
                 releasePlayer();
                 return true;
             });

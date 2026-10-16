@@ -59,6 +59,7 @@ public final class BackgroundPickerActivity extends Activity {
     private boolean updating;
     private LinearLayout content;
     private Palette palette;
+    private TextView logView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -174,6 +175,18 @@ public final class BackgroundPickerActivity extends Activity {
             screenCard.addView(hint);
             content.addView(screenCard);
         }
+
+        // A card with what the keyboard and the theme builder did, to find out why a background does not show.
+        LinearLayout logCard = card();
+        logCard.addView(label("状態（うまく動かないときの調査用）"));
+        logView = new TextView(this);
+        logView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        logView.setTextColor(palette.subText);
+        logView.setTypeface(android.graphics.Typeface.MONOSPACE);
+        logView.setTextIsSelectable(true);
+        logView.setPadding(0, dp(8), 0, 0);
+        logCard.addView(logView);
+        content.addView(logCard);
 
         Button delete = tonalButton("動画・画像を消す");
         delete.setTextColor(palette.danger);
@@ -376,6 +389,9 @@ public final class BackgroundPickerActivity extends Activity {
         final int type = BackgroundSettings.type(this);
         final File file = BackgroundSettings.mediaFile(this);
         final boolean has = type != BackgroundSettings.TYPE_NONE && file.isFile();
+
+        String log = BackgroundSettings.logText(this);
+        logView.setText(log.isEmpty() ? "（まだありません）" : log);
 
         updating = true;
         enabledSwitch.setChecked(has && BackgroundSettings.isEnabled(this));

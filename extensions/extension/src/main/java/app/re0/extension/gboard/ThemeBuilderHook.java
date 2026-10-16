@@ -47,6 +47,7 @@ public final class ThemeBuilderHook {
                 type = BackgroundSettings.TYPE_IMAGE;
             }
 
+            BackgroundSettings.log(activity, "builder: picked " + mime + " -> type " + type);
             synchronized (ThemeBuilderHook.class) {
                 pendingType = type;
                 pendingName = displayName(activity, uri);
@@ -105,6 +106,7 @@ public final class ThemeBuilderHook {
             if (type == BackgroundSettings.TYPE_NONE) {
                 // A theme made from a photo does not have a video behind it.
                 BackgroundSettings.saveEnabled(context, false);
+                BackgroundSettings.log(context, "builder: saved a photo theme, background off");
                 return;
             }
 
@@ -116,6 +118,7 @@ public final class ThemeBuilderHook {
                 pending = pendingFile;
             }
             if (pending == null || !pending.isFile()) {
+                BackgroundSettings.log(context, "builder: saved, but no copied file (" + pending + ")");
                 return;
             }
 
@@ -126,6 +129,7 @@ public final class ThemeBuilderHook {
                 return;
             }
             BackgroundSettings.saveMedia(context, type, name);
+            BackgroundSettings.log(context, "builder: saved, background on, type " + type + ", " + name);
 
             // The part of the picture that the user framed, as parts of its size.
             Rect crop = (Rect) field(builder, "c").get(builder);
@@ -145,9 +149,15 @@ public final class ThemeBuilderHook {
                 float zoom = zoomFor(width / (float) height, BackgroundSettings.aspect(context, mode),
                         partWidth, partHeight);
                 BackgroundSettings.saveView(context, mode, centerX, centerY, zoom);
+                BackgroundSettings.log(context, "builder: screen " + mode + " center " + centerX + "," + centerY
+                        + " zoom " + zoom);
             }
         } catch (Exception ex) {
             Log.e(TAG, "onSave failure", ex);
+            Context context = AppContext.get();
+            if (context != null) {
+                BackgroundSettings.log(context, "builder: save failed: " + ex);
+            }
         }
     }
 

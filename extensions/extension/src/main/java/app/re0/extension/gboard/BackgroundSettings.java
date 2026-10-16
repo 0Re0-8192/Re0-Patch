@@ -113,6 +113,33 @@ final class BackgroundSettings {
                 .apply();
     }
 
+    /** What the background did and why, for the settings screen. The newest lines last, about 12 of them. */
+    static synchronized void log(Context context, String line) {
+        try {
+            SharedPreferences preferences = SettingsReader.preferences(context);
+            String time = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
+            String[] old = preferences.getString("re0_bgm_log", "").split("\n");
+            StringBuilder builder = new StringBuilder();
+            int start = Math.max(0, old.length - 11);
+            for (int i = start; i < old.length; i++) {
+                if (!old[i].isEmpty()) {
+                    builder.append(old[i]).append('\n');
+                }
+            }
+            builder.append(time).append(' ').append(line);
+            preferences.edit().putString("re0_bgm_log", builder.toString()).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    static String logText(Context context) {
+        return SettingsReader.preferences(context).getString("re0_bgm_log", "");
+    }
+
+    static void clearLog(Context context) {
+        SettingsReader.preferences(context).edit().remove("re0_bgm_log").apply();
+    }
+
     static String name(Context context) {
         return SettingsReader.preferences(context).getString(KEY_NAME, "");
     }
