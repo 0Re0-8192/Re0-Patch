@@ -47,15 +47,16 @@ import java.io.OutputStream;
  * Opened from the Gboard settings.
  */
 public final class BackgroundPickerActivity extends Activity {
-    private static final int REQUEST_PICK = 1;
+    /** The request code of the picker of the cover screen. The inner screen is one more. */
+    private static final int REQUEST_PICK = 10;
     private static final int PREVIEW_SIDE = 1600;
 
     private static final int MAX_CONTENT_DP = 640;
 
-    private TextView status;
+    private TextView[] status = new TextView[2];
+    private Button[] deleteButtons = new Button[2];
     private Switch enabledSwitch;
     private Preview[] previews;
-    private Bitmap frame;
     private boolean updating;
     private LinearLayout content;
     private Palette palette;
@@ -92,19 +93,8 @@ public final class BackgroundPickerActivity extends Activity {
         title.setPadding(dp(8), dp(8), dp(8), dp(20));
         content.addView(title);
 
-        // Card: the file and the switch.
-        LinearLayout fileCard = card();
-        TextView fileLabel = label("ファイル");
-        fileCard.addView(fileLabel);
-        status = new TextView(this);
-        status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        status.setTextColor(palette.text);
-        status.setPadding(0, dp(2), 0, dp(12));
-        fileCard.addView(status);
-        Button pick = tonalButton("動画か画像を選ぶ");
-        pick.setOnClickListener(v -> pickMedia());
-        fileCard.addView(pick);
-
+        // Card: the switch, and what it needs.
+        LinearLayout switchCard = card();
         enabledSwitch = new Switch(this);
         enabledSwitch.setText("背景に表示する");
         enabledSwitch.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
@@ -115,32 +105,43 @@ public final class BackgroundPickerActivity extends Activity {
                 BackgroundSettings.saveEnabled(this, checked);
             }
         });
-        LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        switchParams.topMargin = dp(16);
-        fileCard.addView(enabledSwitch, switchParams);
+        switchCard.addView(enabledSwitch);
 
-        TextView note = label("キーボードのテーマは、写真の背景（キーの後ろが透ける）にしてください。"
+        TextView note = label("閉じた画面と開いた画面で、別の動画・画像を流せます。選んでいない画面には、もう一方の動画・画像が出ます。"
+                + "キーボードのテーマは、写真の背景（キーの後ろが透ける）にしてください。"
                 + "単色のテーマでは、動画や画像がキーの下に隠れます。動画は音なしで、くり返し再生します。");
         note.setPadding(0, dp(12), 0, 0);
-        fileCard.addView(note);
-        content.addView(fileCard);
+        switchCard.addView(note);
+        content.addView(switchCard);
 
-        // One card for each screen: the part that is shown.
+        // One card for each screen: the file, and the part that is shown.
         previews = new Preview[2];
         String[] titles = {"閉じた画面（スマホの画面）", "開いた画面（広い画面）"};
         for (int mode = BackgroundSettings.MODE_SMALL; mode <= BackgroundSettings.MODE_LARGE; mode++) {
+            final int screen = mode;
             LinearLayout screenCard = card();
             TextView screenTitle = new TextView(this);
             screenTitle.setText(titles[mode]);
-            screenTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            screenTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
             screenTitle.setTextColor(palette.text);
-            screenTitle.setPadding(0, 0, 0, dp(12));
             screenCard.addView(screenTitle);
+
+            status[mode] = new TextView(this);
+            status[mode].setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            status[mode].setTextColor(palette.subText);
+            status[mode].setPadding(0, dp(2), 0, dp(12));
+            screenCard.addView(status[mode]);
+
+            Button pick = tonalButton("動画か画像を選ぶ");
+            pick.setOnClickListener(v -> pickMedia(screen));
+            screenCard.addView(pick);
 
             final Preview preview = new Preview(this, mode, palette);
             previews[mode] = preview;
-            screenCard.addView(preview);
+            LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            previewParams.topMargin = dp(16);
+            screenCard.addView(preview, previewParams);
 
             TextView zoomLabel = label("拡大");
             zoomLabel.setPadding(0, dp(12), 0, 0);
@@ -173,6 +174,18 @@ public final class BackgroundPickerActivity extends Activity {
 
             TextView hint = label("指でずらして場所を決め、2本の指かバーで拡大します");
             screenCard.addView(hint);
+
+            Button delete = tonalButton("この画面の動画・画像を消す");
+            delete.setTextColor(palette.danger);
+            delete.setOnClickListener(v -> {
+                BackgroundSettings.deleteMedia(this, screen);
+                loadState();
+            });
+            deleteButtons[mode] = delete;
+            LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            deleteParams.topMargin = dp(16);
+            screenCard.addView(delete, deleteParams);
             content.addView(screenCard);
         }
 
@@ -187,18 +200,6 @@ public final class BackgroundPickerActivity extends Activity {
         logView.setPadding(0, dp(8), 0, 0);
         logCard.addView(logView);
         content.addView(logCard);
-
-        Button delete = tonalButton("動画・画像を消す");
-        delete.setTextColor(palette.danger);
-        delete.setOnClickListener(v -> {
-            BackgroundSettings.mediaFile(this).delete();
-            BackgroundSettings.saveMedia(this, BackgroundSettings.TYPE_NONE, "");
-            loadState();
-        });
-        LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        deleteParams.topMargin = dp(8);
-        content.addView(delete, deleteParams);
 
         // The content is not wider than a phone, and in the middle on a large screen.
         FrameLayout holder = new FrameLayout(this);
@@ -322,23 +323,25 @@ public final class BackgroundPickerActivity extends Activity {
         loadState();
     }
 
-    private void pickMedia() {
+    private void pickMedia(int screen) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
         intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"video/*", "image/*"});
-        startActivityForResult(intent, REQUEST_PICK);
+        startActivityForResult(intent, REQUEST_PICK + screen);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQUEST_PICK || resultCode != RESULT_OK || data == null || data.getData() == null) {
+        if (requestCode < REQUEST_PICK || requestCode > REQUEST_PICK + BackgroundSettings.MODE_LARGE
+                || resultCode != RESULT_OK || data == null || data.getData() == null) {
             return;
         }
 
+        final int screen = requestCode - REQUEST_PICK;
         final Uri uri = data.getData();
-        status.setText("コピーしています…");
+        status[screen].setText("コピーしています…");
         new Thread(() -> {
             try {
                 String mime = getContentResolver().getType(uri);
@@ -346,7 +349,7 @@ public final class BackgroundPickerActivity extends Activity {
                         ? BackgroundSettings.TYPE_VIDEO : BackgroundSettings.TYPE_IMAGE;
                 String name = displayName(uri);
 
-                File file = BackgroundSettings.mediaFile(this);
+                File file = BackgroundSettings.mediaFile(this, screen);
                 File temp = new File(file.getParentFile(), file.getName() + ".tmp");
                 try (InputStream in = getContentResolver().openInputStream(uri);
                      OutputStream out = new FileOutputStream(temp)) {
@@ -356,11 +359,12 @@ public final class BackgroundPickerActivity extends Activity {
                         out.write(buffer, 0, read);
                     }
                 }
+                file.delete();
                 if (!temp.renameTo(file)) {
                     throw new IllegalStateException("rename failed");
                 }
 
-                BackgroundSettings.saveMedia(this, type, name);
+                BackgroundSettings.saveMedia(this, screen, type, name);
                 runOnUiThread(this::loadState);
             } catch (Exception ex) {
                 runOnUiThread(() -> {
@@ -386,52 +390,59 @@ public final class BackgroundPickerActivity extends Activity {
 
     /** Shows the saved settings, and the first frame of the media. */
     private void loadState() {
-        final int type = BackgroundSettings.type(this);
-        final File file = BackgroundSettings.mediaFile(this);
-        final boolean has = type != BackgroundSettings.TYPE_NONE && file.isFile();
+        BackgroundSettings.migrate(this);
 
         String log = BackgroundSettings.logText(this);
         logView.setText(log.isEmpty() ? "（まだありません）" : log);
 
+        boolean any = BackgroundSettings.hasAnyMedia(this);
         updating = true;
-        enabledSwitch.setChecked(has && BackgroundSettings.isEnabled(this));
-        enabledSwitch.setEnabled(has);
+        enabledSwitch.setChecked(any && BackgroundSettings.isEnabled(this));
+        enabledSwitch.setEnabled(any);
         updating = false;
 
-        status.setText(has
-                ? (type == BackgroundSettings.TYPE_VIDEO ? "動画: " : "画像: ") + BackgroundSettings.name(this)
-                : "動画も画像も選んでいません");
+        for (int mode = BackgroundSettings.MODE_SMALL; mode <= BackgroundSettings.MODE_LARGE; mode++) {
+            final int screen = mode;
+            final int slot = BackgroundSettings.resolveSlot(this, mode);
+            final Preview preview = previews[mode];
 
-        for (Preview preview : previews) {
+            String text;
+            if (slot < 0) {
+                text = "動画も画像も選んでいません";
+            } else {
+                String kind = BackgroundSettings.slotType(this, slot) == BackgroundSettings.TYPE_VIDEO
+                        ? "動画: " : "画像: ";
+                text = slot == mode ? kind + BackgroundSettings.slotName(this, slot)
+                        : "この画面用は未選択（もう一方と同じ: " + BackgroundSettings.slotName(this, slot) + "）";
+            }
+            status[mode].setText(text);
+            deleteButtons[mode].setEnabled(BackgroundSettings.hasMedia(this, mode));
+
             preview.load();
-        }
-
-        frame = null;
-        if (!has) {
-            for (Preview preview : previews) {
-                preview.setFrame(null);
+            preview.setFrame(null);
+            if (slot < 0) {
+                continue;
             }
-            return;
-        }
 
-        new Thread(() -> {
-            Bitmap bitmap = null;
-            try {
-                bitmap = type == BackgroundSettings.TYPE_VIDEO ? videoFrame(file) : imageFrame(file);
-            } catch (Exception ex) {
-                android.util.Log.e("GboardBackground", "Could not make the preview", ex);
-            }
-            final Bitmap result = bitmap;
-            runOnUiThread(() -> {
-                if (result == null) {
-                    status.setText(status.getText() + "\n（プレビューを作れませんでした。キーボードには出るかもしれません）");
+            final int type = BackgroundSettings.slotType(this, slot);
+            final File file = BackgroundSettings.mediaFile(this, slot);
+            new Thread(() -> {
+                Bitmap bitmap = null;
+                try {
+                    bitmap = type == BackgroundSettings.TYPE_VIDEO ? videoFrame(file) : imageFrame(file);
+                } catch (Exception ex) {
+                    android.util.Log.e("GboardBackground", "Could not make the preview", ex);
                 }
-                frame = result;
-                for (Preview preview : previews) {
+                final Bitmap result = bitmap;
+                runOnUiThread(() -> {
+                    if (result == null) {
+                        status[screen].setText(status[screen].getText()
+                                + "\n（プレビューを作れませんでした。キーボードには出るかもしれません）");
+                    }
                     preview.setFrame(result);
-                }
-            });
-        }, "GboardBackgroundFrame").start();
+                });
+            }, "GboardBackgroundFrame").start();
+        }
     }
 
     private static Bitmap videoFrame(File file) throws Exception {

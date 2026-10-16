@@ -35,6 +35,8 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
 
     private long loadedVersion = -1;
     private int loadedType = BackgroundSettings.TYPE_NONE;
+    private int loadedSlot = -1;
+    private File loadedFile;
 
     private boolean playing;
     private int mediaWidth;
@@ -107,7 +109,11 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
             int height = bottom - top;
             if (width > 0 && height > 0) {
                 rememberAspect(width, height);
-                applyTransform();
+                // The screen may be the other one now, with its own file. Not changed while the layout runs.
+                post(() -> {
+                    refresh();
+                    applyTransform();
+                });
             }
         }
     }
@@ -131,21 +137,25 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
     private void refresh() {
         try {
             Context context = getContext();
+            BackgroundSettings.migrate(context);
+
+            int mode = BackgroundSettings.modeOf(context);
+            int slot = BackgroundSettings.resolveSlot(context, mode);
             boolean enabled = BackgroundSettings.isEnabled(context);
-            int type = BackgroundSettings.type(context);
-            File file = BackgroundSettings.mediaFile(context);
-            if (!enabled || type == BackgroundSettings.TYPE_NONE || !file.isFile()) {
+            if (!enabled || slot < 0) {
                 if (loadedType != BackgroundSettings.TYPE_NONE) {
                     release();
-                    BackgroundSettings.log(context, "keyboard: off (enabled=" + enabled + ", type=" + type
-                            + ", file=" + file.isFile() + ")");
+                    BackgroundSettings.log(context, "keyboard: off (enabled=" + enabled + ", screen " + mode
+                            + ", file of screen " + slot + ")");
                 }
                 loadedVersion = -1;
                 return;
             }
 
+            int type = BackgroundSettings.slotType(context, slot);
+            File file = BackgroundSettings.mediaFile(context, slot);
             long version = BackgroundSettings.version(context);
-            if (version == loadedVersion && type == loadedType) {
+            if (version == loadedVersion && type == loadedType && slot == loadedSlot) {
                 applyTransform();
                 return;
             }
@@ -153,7 +163,10 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
             release();
             loadedVersion = version;
             loadedType = type;
-            BackgroundSettings.log(context, "keyboard: load type=" + type + ", " + file.length() / 1024 + "KB");
+            loadedSlot = slot;
+            loadedFile = file;
+            BackgroundSettings.log(context, "keyboard: screen " + mode + " loads the file of screen " + slot
+                    + ", type=" + type + ", " + file.length() / 1024 + "KB");
             if (type == BackgroundSettings.TYPE_VIDEO) {
                 loadVideo();
             } else {
@@ -263,7 +276,7 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
         try {
             surface = new Surface(texture);
             MediaPlayer mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(BackgroundSettings.mediaFile(getContext()).getPath());
+            mediaPlayer.setDataSource(loadedFile.getPath());
             mediaPlayer.setSurface(surface);
             mediaPlayer.setVolume(0f, 0f);
             mediaPlayer.setLooping(true);
@@ -376,6 +389,8 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
         mediaWidth = 0;
         mediaHeight = 0;
         loadedType = BackgroundSettings.TYPE_NONE;
+        loadedSlot = -1;
+        loadedFile = null;
         invalidate();
     }
 

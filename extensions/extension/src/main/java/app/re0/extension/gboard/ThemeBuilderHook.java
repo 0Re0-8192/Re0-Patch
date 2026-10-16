@@ -30,6 +30,7 @@ public final class ThemeBuilderHook {
     private static File pendingFile;
     private static int pendingType = BackgroundSettings.TYPE_NONE;
     private static String pendingName = "";
+    private static int pendingMode = BackgroundSettings.MODE_SMALL;
 
     private ThemeBuilderHook() {
     }
@@ -50,6 +51,7 @@ public final class ThemeBuilderHook {
             BackgroundSettings.log(activity, "builder: picked " + mime + " -> type " + type);
             synchronized (ThemeBuilderHook.class) {
                 pendingType = type;
+                pendingMode = BackgroundSettings.modeOf(activity);
                 pendingName = displayName(activity, uri);
                 pendingFile = null;
                 copyThread = null;
@@ -58,7 +60,7 @@ public final class ThemeBuilderHook {
                 return;
             }
 
-            final File file = new File(BackgroundSettings.mediaFile(activity).getPath() + ".pending");
+            final File file = new File(BackgroundSettings.mediaFile(activity, BackgroundSettings.modeOf(activity)).getPath() + ".pending");
             Thread thread = new Thread(() -> {
                 try (InputStream in = activity.getContentResolver().openInputStream(uri);
                      OutputStream out = new FileOutputStream(file)) {
@@ -97,10 +99,12 @@ public final class ThemeBuilderHook {
             Thread thread;
             int type;
             String name;
+            int slot;
             synchronized (ThemeBuilderHook.class) {
                 thread = copyThread;
                 type = pendingType;
                 name = pendingName;
+                slot = pendingMode;
             }
 
             if (type == BackgroundSettings.TYPE_NONE) {
@@ -122,14 +126,15 @@ public final class ThemeBuilderHook {
                 return;
             }
 
-            File active = BackgroundSettings.mediaFile(context);
+            File active = BackgroundSettings.mediaFile(context, slot);
             active.delete();
             if (!pending.renameTo(active)) {
                 Log.e(TAG, "Could not move the picked file");
                 return;
             }
-            BackgroundSettings.saveMedia(context, type, name);
-            BackgroundSettings.log(context, "builder: saved, background on, type " + type + ", " + name);
+            BackgroundSettings.saveMedia(context, slot, type, name);
+            BackgroundSettings.log(context, "builder: saved for screen " + slot + ", background on, type " + type
+                    + ", " + name);
 
             // The part of the picture that the user framed, as parts of its size.
             Rect crop = (Rect) field(builder, "c").get(builder);
@@ -144,8 +149,12 @@ public final class ThemeBuilderHook {
             float partWidth = crop.width() / (float) width;
             float partHeight = crop.height() / (float) height;
 
-            // The same part is set for both screens, and can be changed for each in the picker.
+            // The screen where the theme was made gets the part. The other screen, if it has no file of its own,
+            // shows this file, so it gets the same part, and can be changed in the picker.
             for (int mode = BackgroundSettings.MODE_SMALL; mode <= BackgroundSettings.MODE_LARGE; mode++) {
+                if (mode != slot && BackgroundSettings.hasMedia(context, mode)) {
+                    continue;
+                }
                 float zoom = zoomFor(width / (float) height, BackgroundSettings.aspect(context, mode),
                         partWidth, partHeight);
                 BackgroundSettings.saveView(context, mode, centerX, centerY, zoom);
