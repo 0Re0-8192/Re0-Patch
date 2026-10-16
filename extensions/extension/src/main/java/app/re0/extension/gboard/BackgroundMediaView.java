@@ -345,7 +345,9 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
         } else if (player != null && prepared && !player.isPlaying()) {
             player.start();
         }
-        if (image instanceof AnimatedImageDrawable) {
+        // Starting an animation that already runs makes it begin again, so it is only started when it is stopped.
+        // The check every second would otherwise keep a GIF on its first frames.
+        if (image instanceof AnimatedImageDrawable && !((AnimatedImageDrawable) image).isRunning()) {
             ((AnimatedImageDrawable) image).start();
         }
     }
