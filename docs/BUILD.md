@@ -1,6 +1,6 @@
 # ビルドと開発
 
-友達に配るだけなら、ビルドは要りません。[releases/](../releases) の `.mpp` をそのまま使えます。
+友達に配るだけなら、ビルドは要りません。[Releases](https://github.com/0Re0-8192/Re0-Patch/releases/latest) の `.mpp` をそのまま使えます。
 ここは、パッチを自分で直す人向けです。
 
 ## ビルド

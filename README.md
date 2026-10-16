@@ -22,7 +22,7 @@ Android の Gboard（Google のキーボード）を、[Morphe](https://morphe.s
 対象は **Gboard 18.4.1.985164140-release-arm64-v8a** だけです。他のバージョンでは動きません（当たらないか、壊れます）。
 
 1. Morphe Manager を入れる（[公式サイト](https://morphe.software)）
-2. [releases/](releases) の最新の `.mpp` をスマホにダウンロードする
+2. [Releases](https://github.com/0Re0-8192/Re0-Patch/releases/latest) から、最新の `.mpp` をスマホにダウンロードする
 3. Morphe Manager で **Sources → ＋ → Local** を開いて、その `.mpp` を選ぶ
 4. 上の Gboard 18.4.1 の APK を用意して、Manager のホームから Gboard を選んでパッチする
    - **Simple mode** なら、初期状態がONのパッチがそのまま全部当たる
