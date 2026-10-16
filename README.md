@@ -1,320 +1,96 @@
-# Re0 Gboard Patches（Morphe用）
+# Re0 Patch — Gboard を便利にするパッチ
 
-Gboard の「フラグ」を好きな値に書き換えて遊ぶための、[Morphe](https://morphe.software) 互換パッチです。
-フラグとは機能のON/OFFや数値設定のことで、Google がサーバーから配信して機能を段階的に出し分けるのに使っています。
+Android の Gboard（Google のキーボード）を、[Morphe](https://morphe.software) でパッチして使いやすくするパッチ集です。
+スマホだけで入れられます（パソコンは要りません）。
 
 > Morphe 公式プロジェクトとは無関係の個人プロジェクトです（[NOTICE](NOTICE)）。
 
-## 🧩 パッチ
+## できること
+
+- **キーボードの背景に動画・GIF・画像を流せる。** 閉じた画面と開いた画面（折りたたみの広い画面など）で、別のファイル・別の見せ場所にできる
+- **クリップボードのキー**を、文字入力のキーボードにも数字キーボードにも足す
+- **クリップボードの強化。** 履歴が消えない、全件見える、1件20万字まで
+- **数字・電話のキーボードに左右の矢印キー**を足す
+- **日本語入力中の数字を、最初から半角**にする（設定でON/OFF）
+- **テーマの画像が荒くならない**（読み込み上限を512pxから2048pxに）
+- **テーマの新規作成で動画・GIFを選べる**
+
+何がどこに出るかの説明は、下の「[使い方](#使い方)」にあります。パッチごとの細かい仕組みは [docs/PATCHES.md](docs/PATCHES.md) です。
+
+## 入れ方
+
+対象は **Gboard 18.4.1.985164140-release-arm64-v8a** だけです。他のバージョンでは動きません（当たらないか、壊れます）。
+
+1. Morphe Manager を入れる（[公式サイト](https://morphe.software)）
+2. [releases/](releases) の最新の `.mpp` をスマホにダウンロードする
+3. Morphe Manager で **Sources → ＋ → Local** を開いて、その `.mpp` を選ぶ
+4. 上の Gboard 18.4.1 の APK を用意して、Manager のホームから Gboard を選んでパッチする
+   - **Simple mode** なら、初期状態がONのパッチがそのまま全部当たる
+5. 公式の Gboard が入っていると、Manager に「アンインストールして」と言われるので、消してから入れる
+6. 端末の **設定 → システム → キーボード → 画面キーボード** で、入れた Gboard を有効にする
+
+公式 Gboard と並べて入れたいときは、Expert mode で公式パッチの **Clone app** と **Spoof signature** も一緒に当てます。
+アプリ名が `Gboard Re0` になるので見分けられます。
+
+## 使い方
+
+### 背景の動画・画像
+
+次のどちらかから開きます。
+
+- Gboard のテーマの画面の一番上にある **「動画・画像の背景を設定する（Re0）」**
+- Gboard の設定の一番下の **「背景の動画・画像」**
+
+画面ごとに「閉じた画面」「開いた画面」のカードがあるので、ファイルを選んで、指でずらして見せる場所を決めて、バーで拡大します。
+動画は音なしでくり返し再生され、キーボードが出ている間だけ動きます。
+
+**キーボードのテーマは「写真」の背景にしてください。** 単色のテーマだと、背景が不透明で動画がキーの下に隠れます。
+明るさは、選んでいるテーマの明るさの設定に従います。
+
+テーマの **＋**（新しいテーマ）で動画や GIF を選んでも、同じ背景として使えます。
+
+### クリップボードのキー
+
+- 文字入力のキーボード: スペースキーの左の地球儀のキーが、クリップボードのキーに変わります。言語の切り替えは**スペースキーの長押し**です。
+- 数字・電話のキーボード: 下に足した矢印キーの行の、左右の矢印の間に入ります。
+- 日本語の数字・記号のキーボード（あa1 キー）にも入ります。
+
+クリップボードは、保存される文字数が20万字まで、履歴は自分で消すまで残り、画面には保存されている全件（ピン留めなしで約100件）が出ます。
+
+### 日本語入力の半角の数字
+
+Gboard の **設定 → キー → 「数字を常に半角で入力」** で切り替えられます。切り替えたあとは、次に入力欄を開いたときに反映されます。
+
+## パッチの一覧
 
 | パッチ | 初期状態 | 内容 |
 |---|---|---|
-| Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
-| Half-width digits in Japanese input | ON | 日本語入力中の数字を、打った瞬間から半角にする。設定にスイッチも追加 |
-| Arrow keys in number keyboards | ON | 数字・電話のキーボードの下に、左右の矢印キーの行を足す |
-| Clipboard key | ON | どのキーボードからでもクリップボードを開くキーを足す（スペースの右など）。矢印キーのパッチも使う |
-| Video and GIF in the theme builder | ON | テーマの新規作成で動画・GIFも選べる。切り抜いた場所で動画の背景になる |
-| Better theme image quality | ON | テーマの画像を新しく選ぶときの読み込み上限を、512pxから2048pxに上げる |
 | Video and image background | ON | キーボードの背景に動画や画像を流す。画面ごとに見せる場所を決められる |
-| Raise clipboard text limit | ON | クリップボードに残す1件の文字数上限を、2万字から20万字に上げる |
-| Show all clipboard history | ON | 最新5回分しか出ないクリップボードの表示を、保存されている全件にする |
-| Extend clipboard history | OFF | クリップボードの保持期間を最大24時間から選べるようにする |
-| Change app name | ON | アプリ名を変える |
-| Override flags | OFF | 任意のフラグを上書きする（上級者向け） |
-
-ON/OFF だけで使えるパッチは、Morphe Manager の Simple mode でも、何も入力せずにそのまま効きます。
-
-### Keep clipboard history forever
-
-ピン留めしていないクリップは、通常は1時間で削除されます。
-このパッチは保持期間を決めるメソッド（`ClipboardContentProviderUtils.getUnpinnedItemTimeLimitInMilliSeconds`）が常に100年を返すようにするので、自分で消すまで残ります。
-件数の上限（ピン留めなしで約100件）はそのままです。
-Extend clipboard history と一緒に当てると、こちらが優先されて保持期間の設定は効かなくなります。
-
-### Half-width digits in Japanese input
-
-日本語入力中にQWERTYの数字キーで打った数字は、通常は「１２３」と全角で表示されます。
-このパッチを当てると、打った瞬間から「123」と半角になります。変換候補には全角も残ります。
-数字や英字のあとに打った「。」「、」は、そのまま「。」「、」にします（Mozc は「1。」を「1．」のように全角に置き換えますが、それを元に戻します）。
-
-Gboard の **設定 → キー** に **「数字を常に半角で入力」** のスイッチが増えます（初期値はON）。
-切り替えたあとは、次に入力欄を開いたときに反映されます。
-
-**仕組み:** 日本語変換エンジン（Mozc）は、文字の種類ごとの「全角・半角のルール」（`character_form_rules`）で打った文字を変換します。
-Gboard が渡す設定にはこのルールが無いので、Mozc の初期ルール（数字は入力中も全角）が使われています。
-パッチは、エンジンに送る命令を作っている `LocalSessionHandler.evalCommand` にフックして、設定を送る命令（`SET_CONFIG`）の末尾にルールを足します。
-protobuf は同じメッセージが2回出てきたら中身を合成するので、既存の設定はそのまま残ります。
-ルールが1つでもあると初期ルールは使われなくなるので、Mozc の初期ルール12個を足したうえで、数字（グループ `"0"`）だけ半角にしています。
-
-**数字のあとの「。」「、」:** Mozc は数字や英字のあとの「。」「、」を、全角の「．」「，」に自動で置き換えます（`Composer::TransformCharactersForNumbers`）。
-これは設定で止められません。
-「．」「，」は「。」「、」と UTF-8 で同じ3バイトなので、エンジンの返事（`MozcJni.evalCommand` の戻り値）のバイト列の中で、数字・英字の直後のものだけ元に戻しています。
-長さが変わらないので、protobuf の長さなどは書き換えずに済みます。
-数字・英字の直後以外（記号の候補としての「．」など）は触りません。
-スイッチの値は SharedPreferences の `re0_half_width_digits` に保存されます。
-
-**スイッチの読み方:** Gboard は、設定を「デバイス保護ストレージ」の標準の設定ファイルに保存します（端末のロックを解除する前でも読めるようにするため）。通常の `getDefaultSharedPreferences(context)` は別のファイルを見るので、スイッチを切っても反映されません。拡張の `SettingsReader` は、デバイス保護ストレージを先に読み、無ければ通常のほうを読みます。設定にスイッチを足すパッチは、これを使ってください。
-
-### Arrow keys in number keyboards
-
-数字だけの入力欄（数値・電話番号など）のキーボードには、カーソルを動かすキーがありません。
-このパッチは、そのキーボードの一番下に、左右の矢印キーだけの行を足します（右キーと左キーが半分ずつ）。
-矢印キーの上や下にスライドすると、カーソルが上や下に動きます。
-
-対象は、数値・数字だけ・小数の入力欄（`LatinNumberKeyboard`）と、電話番号の入力欄（`LatinDialKeyboard`）です。
-暗証番号の入力欄（3列のテンキー）や、大きなタブレット用の電話キーボードは、まだ対象外です。
-
-**仕組み:** キーボードの見た目は「レイアウト」（キーの枠の並び）と、「キー対応表」（どの枠がどのキーか）で決まります。
-数字キーボードのレイアウト（`IwS`・`v73`）に、左右キーの枠 `key_pos_left_arrow` と `key_pos_right_arrow` が入った行を足し、高さの配分を5行分に直します。
-キーボードの定義（`elQ`・`gJw`・`4ht`）には、QWERTY などで使われている左右キーの定義を読み込ませて、新しい枠に結びつけます。
-キーの高さは5行で分け合うので、元の4行より少し低くなります。
-
-**キーボード定義のキャッシュ:** Gboard は、読み込んだキーボード定義をディスクにキャッシュします（`kb_def`）。
-保存先のフォルダ名は、OS と**アプリの versionCode** で決まります。
-改造版は元のアプリと同じ versionCode なので、更新してもキャッシュが残り、古い定義（矢印キーの割り当てが無いもの）がそのまま使われます。
-そのため、キーボードを変えるパッチは `keyboardCachePatch` に頼り、versionCode に `KEYBOARD_CACHE_GENERATION`（今は 2）を足して、新しいキャッシュを使わせます。
-キーボードの定義を変えるパッチをまた変更するときは、この値を増やしてください。
-
-### Clipboard key
-
-どのキーボードからでも、1タップでクリップボードを開くキーを足します。
-開くのはツールバーのクリップボードのアイコンと同じ画面です（キーボードの種類 `clipboard` に切り替えます）。
-
-- **文字入力のキーボード（QWERTY など）:** スペースキーの左にある地球儀のキー（言語の切り替え。日本語の入力中は「?」のキーに変わる）を、クリップボードのキーに置き換えます。キーの数も幅も変わりません。言語の切り替えは、スペースキーの長押しでできます。
-- **地球儀のキーが無いレイアウト:** スペースキーの左に足します（縦に並んだ50音キーボードだけ、スペースキーの下）。幅はスペースキーの4割まで（隣のキーと同じ幅まで）をスペースキーから分けるので、スペースキーが少し細くなります。
-- **数字・電話のキーボード:** 足した矢印キーの行で、左右の矢印の間に入ります。
-- **日本語の数字・記号キーボード（あa1 キーで切り替える）:** 12キーの配列（スマホ・大きな画面）では、「!?#」キーの隣に入ります。画面を左右に分けた配列（折りたたみを開いたとき）では、下の段のスペースキーの左にクリップボードのキー、右に左右の矢印キーが入ります（スペースキーが細くなります）。
-- 日本語の50音キーボードにも、スペースキーのすぐ後ろ（スペースと改行キーの間）に入ります。
-
-このキーは、キー対応表で結びつけられたキーボードにだけ現れます（対応表が無いキーボードでは、空白のキーではなく何も出ません）。
-絵文字・音声入力・手書き・日本語のテンキー配列などには、まだ入っていません。
-
-**仕組み:** 新しいキーの枠 `re0_key_clipboard` と、キーの定義 `re0_softkey_clipboard` を `res/values/ids.xml` で宣言します。
-キーの定義（`SWITCH_KEYBOARD`、データ `clipboard`、ツールバーと同じアイコン）は、左矢印キーの定義があるファイル（`L93`・`_fZ`・`Xyr`）の、左矢印の次に足します。
-キー対応表（`3OC`・`VWK`）には、左矢印の対応の次に、新しいキーの対応を足します。
-レイアウトは、スペースキーを持つ14のレイアウトに枠を足します。枠は最初は非表示（`gone`）で、キーが結びつくと表示されます。
-
-**「?」キーの修復:** 定義ファイルを書き直すと、値が「?」だけの属性（`data="?"`）が、テーマ属性の参照 `?attr/` としてコンパイルされ、キーに「?attr/」という文字が出てしまいます（`Xyr` の「?」キー）。
-そこで、値が「?」だけの属性は、「?」だけの文字列リソース `re0_question_mark` への参照に置き換えます。他の定義ファイルを書き直すパッチを足すときも、同じ問題に注意してください。
-
-### Video and GIF in the theme builder
-
-テーマの画面の「+」（新しいテーマ）の画像選択で、動画と GIF も選べるようにします。選んだ動画や GIF の最初の1コマが、写真と同じように、切り抜きと明るさの調整の画面に流れます。
-テーマを保存すると、その動画や GIF が、キーボードの背景（動画・画像の背景）になります。切り抜いた場所が、そのまま見せる場所になります。
-写真を選んだテーマを保存したときは、動画の背景は切れます。
-
-**仕組み:** 3か所を書き換えます。
-1. `ThemeBuilderActivity.requestImportImage`: 写真選択のリクエストが「画像のみ（`nu`）」なのを、「画像と動画（`nt`）」にします。
-2. `ThemeBuilderActivity.handleImageUri` が、選んだ Uri を `r` に入れた直後に、拡張の `ThemeBuilderHook.onPicked` を呼びます。動画か GIF なら、ファイルを `re0_background.bin.pending` にコピーし始めます。最初の1コマは、Gboard が Glide で読みます（動画も GIF も、Glide が1コマ目の画像にします）。
-3. `UserImageThemeBuilder.save` の先頭で、`ThemeBuilderHook.onSave` を呼びます。コピーした動画を本番のファイルにして、背景を ON にします。
-   テーマが持つ切り抜きの四角（`c`、ユーザーが枠で決めた場所。元の画像の大きさ `l`×`m` に対する四角）を、中心と拡大に直して、閉じた画面と開いた画面の両方に入れます。画面ごとの微調整は、「動画・画像の背景」の画面でできます。
-
-テーマの切り抜きは1つだけで、枠の形は、テーマを作った画面のものです。そのため、もう片方の画面は、同じ中心と拡大が初期値になります。
-
-### Better theme image quality
-
-テーマの画像を新しく選ぶとき、`ThemeBuilderActivity` は、画像を最大 512×512 ピクセルで読み込みます（Glide の `override(512, 512)`）。これがキーボードの背景がぼやける原因です。
-このパッチは、その上限を引き上げます（初期値は 2048。オプション `maxSide`、512〜8192）。
-`handleImageUri` のログ文字列を持つメソッドの、`const/16 512` を書き換えます。
-すでに作ったテーマの画像は、読み込み済みの小さい画像なので、変わりません。テーマを作り直してください。
-
-### Video and image background
-
-キーボードの背景に、動画（mp4 など）や画像（写真・GIF・アニメーション WebP）を流します。Gboard のテーマの画面の一番上（テーマの一覧の上）にある「動画・画像の背景を設定する（Re0）」か、設定の一番下の「背景の動画・画像」から、ファイルを選びます。
-
-- **画面ごとに別の動画・画像:** 閉じた画面と開いた画面で、別のファイルを流せます。背景の画面で、画面ごとに選びます。テーマの「+」から作ったときは、そのとき使っている画面の分になります。選んでいない画面には、もう一方のファイルが出ます。ファイルは `files/re0_background_0.bin`（閉じた画面）と `re0_background_1.bin`（開いた画面）です。以前の1つだけの設定（`re0_background.bin`）は、初回に両方の画面にコピーします。
-- **画面ごとに見せる場所を決める:** 閉じた画面（スマホの画面）と、開いた画面（広い画面）で、別々に「どの場所を見せるか」と「拡大」を決められます。キーボードと同じ形の枠の中で、指でずらして、2本の指かバーで拡大します。
-- **画質:** テーマの背景画像のように縮小や圧縮はしません。画像は長辺 4096px まで、そのままの画質で読み込みます。
-- **動画:** 音なしで、くり返し再生します。キーボードが表示されている間だけ再生して、隠れたら止めます。
-- **設定画面:** Gboard の設定に合わせた見た目です。端末の色（Material You）と、ダークモードに従う角丸のカードで、画面の幅が広いときは中央に寄せます。
-- **注意:** キーボードのテーマは、写真の背景（キーの後ろが透ける）にしてください。単色のテーマでは、本体が不透明なので、動画や画像がキーの下に隠れます。
-
-**テーマの画面への入口:** テーマの画面は `ThemeListingFragment` が作る FrameLayout（テーマの一覧の `RecyclerView` が入っている）です。その view を返す直前に、拡張の `ThemeScreenHook.decorate` を呼びます（view を返す箇所は全部につけます。null は拡張が無視します）。一覧を行の高さぶん下げて、上に「動画・画像の背景を設定する」の行を足します。
-
-**仕組み:** テーマの背景を持つ `ShrinkableFrameView`（タグ `.keyboard-background`。キーの後ろに全面に広がるビュー）の最初の子として、`BackgroundMediaView` を足します。
-画像は `ImageDecoder` で読み込んで、拡大・移動して描きます。動画は `TextureView` と `MediaPlayer` で、`setTransform` で同じ拡大・移動をします。
-場所の計算（`BackgroundTransform`）は、キーボードと設定の枠で同じものを使うので、枠で見た場所がそのまま出ます。
-ファイルは、デバイス保護ストレージの `files/re0_background.bin` にコピーします（端末のロックを解除する前でも読めるようにするため）。
-「開いた画面」は、画面の幅が600dp以上のときです（Gboard のレイアウトが「大きい画面」とするのと同じ）。
-キーボードの枠の形は、表示されたときに記録して、設定の枠に使います。
-
-### Raise clipboard text limit
-
-Gboard は、クリップボードに保存するテキストを1件あたり20,000文字で切り捨てます（フラグ `text_clip_item_char_limit`）。
-同じ値が、クリップボードの編集欄の長さ制限にも使われているので、貼り付けられるのもその文字数までです。
-このパッチは上限を200,000文字に上げます。パッチのオプション `limit` で変えられます。
-あまり大きくすると、クリップが入っているデータベースの1行の大きさの制限（約2MB）に当たって、読み込めなくなるかもしれません。
-
-### Show all clipboard history
-
-Gboard のクリップボード画面の「最近」には、**最新5回分のコピー**しか表示されません（同じ時刻のクリップは1回分として数えます）。
-さらに、表示した中で一番古いクリップの時刻を `clipboard_unpinned_item_threshold_time` に保存し、次からはそれより古いものを検索しなくなります。
-そのため、6回目より前のクリップは保存されていても二度と表示されません。
-このパッチは5回分の上限（`if (copies >= 5) break;`）を外し、保存された時刻での絞り込みも無視して、保存されている全件（ピン留めなしで約100件まで）を表示します。
-同じ上限は古い検索処理にもあるので、Gboard の初期値どおりフラグ `enable_clipboard_query_refactoring` を ON に固定し、新しい方を必ず使わせます。
-
-### Extend clipboard history
-
-ピン留めしていないクリップは、通常は1時間で削除されます。
-このパッチを当てると、Gboard の **設定 → クリップボード** に **「クリップボードの履歴を保持する期間」** が出てきて、1・2・3・6・12・18・24時間から選べます。
-中身はフラグ `enable_extended_clipboard_history` を ON にしているだけです（Gboard に元から入っている隠し設定）。
-
-### Override flags
-
-Gboard のフラグを上書きします。サーバー側の設定（Phenotype）より優先されます。
-設定値の入力が必要なので、Morphe Manager では Expert mode で使ってください。
-
-**仕組み:** Gboard はローカルの初期値、サーバー配信値、OEM値などを1つの最終値にまとめてから使います。
-内部パッチ（`FlagOverridesHookPatch`）がその最終値を返すゲッター（難読化名 `odx.g()`）をフックします。
-そのため、すべてのフラグ読み取りが extension の `FlagOverridePatch.getFlagValue(name, value)` を通ります。
-各パッチが追加した上書きは、全パッチの実行後（`finalize`）にまとめて extension に書き込まれます。
-同じフラグなら、このパッチのオプションで入れた値が優先されます。
-
-| オプション | 内容 |
-|---|---|
-| `flagOverrides` | `name=value` を `;` 区切りで並べたもの。例: `enable_extended_clipboard_history=true;text_clip_item_char_limit=50000` |
-| `logFlags` | Gboard が読んだフラグの名前と値を logcat（タグ `GboardFlags`）に出します。上書き候補を探すのに便利です。 |
-
-**再パッチなしで上書きする方法:**
-`/sdcard/Android/data/<パッケージ名>/files/flag_overrides.txt` に1行1つ `name=value` を書きます。
-`#` で始まる行はコメントです。ファイルの値はパッチオプションより優先されます。
-
-値は元のフラグの型に合わせて変換されます。
-
-| 型 | 書き方 |
-|---|---|
-| bool | `true` / `false`（`1` / `0` も可） |
-| long | 整数 |
-| double | 小数 |
-| string | そのまま（`;` は使えません） |
-
-protobuf（byte[]）のフラグには対応していません。変換できない値は無視され、logcat に警告が出ます。
-
-### Change app name
-
-アプリ名（＝端末のキーボード一覧に出る名前）を変えます。初期値は `Gboard Re0` です。
-Clone app で公式 Gboard と並べて入れたときに見分けるためのものです。
-
-## 🎮 遊んでみたいフラグ
-
-18.4.1 のコードから見つけたフラグの一覧（型と初期値つき）は [flags-18.4.1.txt](flags-18.4.1.txt) にあります。
-いくつか例を挙げますが、**どれも名前から推測しただけで動作は未確認です。**
-
-| フラグ | 型 | 初期値 | 推測 |
-|---|---|---|---|
-| `enable_extended_clipboard_history` | bool | false | クリップボード履歴の拡張 |
-| `text_clip_item_char_limit` | long | 20000 | クリップボードに残すテキストの文字数上限 |
-| `config_keyboard_max_height` | long | -1 | キーボードの最大の高さ |
-| `config_keyboard_height_ratio` | string | "1.0" | キーボードの高さの倍率 |
-| `enable_access_points_menu_redesign` | bool | false | ツールバーメニューの新デザイン |
-| `enable_custom_sticker_tab` | bool | false | カスタムステッカーのタブ |
-| `enable_debug_toast_for_proactive_emoji_kitchen` | bool | false | Emoji Kitchen のデバッグ用トースト |
-
-サーバー側のデータが必要な機能は、フラグを有効にしても動かないことがあります。
-
-## 🚀 使い方
-
-### 1. APK を用意する
-
-Gboard **18.4.1.985164140-release-arm64-v8a** で開発しました。
-フラグの仕組みはあまり変わらないので、他のバージョンにも当たる可能性があります（experimental 扱い）。
-
-### 2. パッチを当てる（Morphe CLI）
-
-[Morphe Desktop](https://github.com/MorpheApp/morphe-desktop) の jar に CLI が入っています（`morphe-desktop-<version>-all.jar`）。
-GUI で使う場合も、ビルドした `.mpp` を他のパッチバンドルと同じように読み込めます。
-
-**スマホだけで作る場合（Morphe Manager）:** **Sources → ＋ → Local** でこの `.mpp` を追加し、ホームの Gboard から普通にパッチします。
-Simple mode なら初期状態が ON のパッチがそのまま当たります。
-公式 Gboard はアンインストールが必要です（Morphe Manager が案内します）。
-
-**公式 Gboard と並べて入れたい場合:** 公式パッチの **Clone app**（パッケージ名の変更）と **Spoof signature** も一緒に当てます。
-Morphe Manager では Expert mode で選べます。
-CLI では `-e` と `-O` は直前の `--patches` に対して効く点に注意してください。
-
-```sh
-java -jar morphe-desktop-1.18.1-all.jar patch --exclusive \
-  --patches=patches/build/libs/patches-1.1.0.mpp \
-    -e "Extend clipboard history" \
-    -e "Change app name" \
-    -e "Override flags" \
-    -O logFlags=true \
-    -O 'flagOverrides=text_clip_item_char_limit=50000' \
-  --patches=patches-1.47.0.mpp \
-    -e "Clone app" \
-    -e "Spoof signature" \
-  -o gboard-patched.apk \
-  gboard.apk
-```
-
-Clone app の初期設定では、パッケージ名が `com.google.android.inputmethod.latin.morphe` になります。
-
-### 3. インストールして有効にする
-
-```sh
-adb install gboard-patched.apk
-```
-
-端末の **設定 → システム → キーボード → 画面キーボード** で、追加された Gboard を有効にします。
-
-### 4. フラグを試す
-
-```sh
-PKG=com.google.android.inputmethod.latin.morphe
-
-# フラグの読み取りを見る（logFlags=true でパッチした場合）
-adb logcat -s GboardFlags
-
-# 上書きファイルを置いて Gboard を再起動する
-adb shell mkdir -p /sdcard/Android/data/$PKG/files
-adb push flag_overrides.txt /sdcard/Android/data/$PKG/files/
-adb shell am force-stop $PKG
-```
-
-ファイルはプロセスの起動時に1回だけ読まれます。変更したら `force-stop` してください。
-おかしくなったらファイルを消して `force-stop` すれば元に戻ります。
-パッチオプションで入れた上書きは、消すのに再パッチが必要です。試行錯誤にはファイルの方が向いています。
+| Video and GIF in the theme builder | ON | テーマの新規作成で動画・GIFも選べる |
+| Better theme image quality | ON | テーマの画像の読み込み上限を2048pxに上げる |
+| Clipboard key | ON | どのキーボードからでもクリップボードを開くキーを足す |
+| Arrow keys in number keyboards | ON | 数字・電話のキーボードに左右の矢印キーの行を足す |
+| Half-width digits in Japanese input | ON | 日本語入力中の数字を半角にする |
+| Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
+| Show all clipboard history | ON | クリップボードの履歴を保存されている全件出す |
+| Raise clipboard text limit | ON | クリップボード1件の文字数上限を20万字に上げる |
+| Change app name | ON | アプリ名を `Gboard Re0` にする |
+| Extend clipboard history | OFF | 履歴の保持期間を最大24時間から選べる設定を出す（上の「消さない」と同時には効かない） |
+| Override flags | OFF | Gboard のフラグを上書きする（上級者向け。[docs/FLAGS.md](docs/FLAGS.md)） |
 
 ## ⚠️ 注意
 
-- **実機ではまだ動かしていません。** 確認済みなのは次の4つです。
-  - ビルド
-  - 18.4.1 arm64 への適用（Clone app / Spoof signature との組み合わせも含む）
-  - 生成された smali の中身
-  - extension の JVM 単体テスト
+- **作者の Galaxy Z Fold 7 でしか確かめていません。** ほかの端末では、キーの並びが違ったり、動かなかったりするかもしれません。
+- 動画（mp4）の再生は、まだ作者も十分に確かめていません。GIF とアニメーションの画像は確認済みです。
 - 署名が変わるので、Google アカウントの同期や音声入力など、Google Play 開発者サービスを使う機能は動かないかもしれません。
-- フラグの組み合わせによってはクラッシュします。
+- 壊れたら、公式の Gboard を入れ直せば元に戻ります。
 
-## 🛠️ ビルド
+## もっと詳しく
 
-必要なもの: JDK 17以上と Android SDK（platform 36）。`ANDROID_HOME` か `local.properties` の `sdk.dir` で SDK の場所を指定してください。
-
-```sh
-./gradlew buildAndroid
-# → patches/build/libs/patches-1.1.0.mpp
-```
-
-Morphe の Gradle プラグインとパッチャーは GitHub Packages にあり、取得には GitHub の認証が必要です。次のどちらかを使ってください。
-
-- `read:packages` 権限の PAT を `~/.gradle/gradle.properties` に `gpr.user=<GitHubユーザー名>` と `gpr.key=<トークン>` として書く（[Morphe のドキュメント](https://github.com/MorpheApp/morphe-patcher/blob/main/docs/2_1_setup.md)）。
-- [morphe-patcher](https://github.com/MorpheApp/morphe-patcher)（v1.15.1）と [morphe-patches-gradle-plugin](https://github.com/MorpheApp/morphe-patches-gradle-plugin)（v1.3.4）をソースから `./gradlew publishToMavenLocal` する。
-  `settings.gradle.kts` が `mavenLocal()` を最初に見るので、トークンなしでビルドできます。
-  この場合も `-Pgpr.user=x -Pgpr.key=x` のようなダミー値は渡してください（プラグインが値の存在を要求するため）。
-  署名用の `signing {}` が gpg を要求したら、ローカル用にそのブロックを外します。
-
-### 新しい Gboard に対応させるとき
-
-fingerprint はフラグ実装クラスの文字列 `"Clearing default value is disallowed ["` と `"Invalid flag: "` を頼りにしています（[Fingerprints.kt](patches/src/main/kotlin/app/re0/patches/gboard/flags/Fingerprints.kt)）。
-適用に失敗したら jadx でこの文字列を探してください。
-内部名 `com/google/android/libraries/inputmethod/flag/FlagFactory` と `FlagManager` もログ文字列として残っているので、目印になります。
-
-## 📁 構成
-
-```
-patches/      パッチ本体（Kotlin）。fingerprint とバイトコード注入
-extensions/   Gboard 内で動く Java コード（.mpe として同梱）
-flags-18.4.1.txt  フラグ一覧
-```
+- [docs/PATCHES.md](docs/PATCHES.md): 各パッチの仕組み
+- [docs/BUILD.md](docs/BUILD.md): ビルド、パソコンのコマンドで当てる方法、新しい Gboard への対応
+- [docs/FLAGS.md](docs/FLAGS.md): フラグを触って遊ぶ方法とフラグ一覧
+- [CHANGELOG.md](CHANGELOG.md): 変更の履歴
 
 ## 📜 ライセンス
 
