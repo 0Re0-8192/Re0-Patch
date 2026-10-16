@@ -4,7 +4,7 @@ patches {
     about {
         name = "Re0 Gboard Patches"
         description = "Morphe-compatible patches for Gboard"
-        source = "https://github.com/0Re0-8192/Anything/tree/main/GboardMorphePatches"
+        source = "https://github.com/0Re0-8192/Re0-Patch"
         author = "0Re0-8192"
         contact = "na"
         website = "na"
