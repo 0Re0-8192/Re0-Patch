@@ -171,8 +171,11 @@ public final class BackgroundPickerActivity extends Activity {
             });
             screenCard.addView(zoom);
 
-            TextView hint = label("指でずらして場所を決め、2本の指かバーで拡大します");
-            screenCard.addView(hint);
+            // The same for both cards, so it is shown once.
+            if (mode == BackgroundSettings.MODE_SMALL) {
+                TextView hint = label("指でずらして場所を決め、2本の指かバーで拡大します");
+                screenCard.addView(hint);
+            }
 
             Button delete = tonalButton("消す");
             delete.setTextColor(palette.danger);
