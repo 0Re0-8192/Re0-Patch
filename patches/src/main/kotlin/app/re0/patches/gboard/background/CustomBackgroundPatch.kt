@@ -70,10 +70,6 @@ private val pickerResourcesPatch = resourcePatch(
             category.appendChild(
                 document.createElement("Preference").apply {
                     setAttribute("android:title", "動画か画像を選ぶ")
-                    setAttribute(
-                        "android:summary",
-                        "キーボードの背景に動画や画像を流します。閉じた画面と開いた画面で、見せる場所を別々に決められます。",
-                    )
                     appendChild(
                         document.createElement("intent").apply {
                             setAttribute("android:targetPackage", APP_PACKAGE)

@@ -28,6 +28,8 @@ public final class ThemeBuilderHook {
 
     private static Thread copyThread;
     private static File pendingFile;
+    // Counts the picks. A copy that is no longer the latest pick must not become the pending file.
+    private static int pickCount;
     private static int pendingType = BackgroundSettings.TYPE_NONE;
     private static String pendingName = "";
     private static int pendingMode = BackgroundSettings.MODE_SMALL;
@@ -49,18 +51,27 @@ public final class ThemeBuilderHook {
             }
 
             BackgroundSettings.log(activity, "builder: picked " + mime + " -> type " + type);
+            final int pick;
+            File previous;
             synchronized (ThemeBuilderHook.class) {
+                previous = pendingFile;
+                pick = ++pickCount;
                 pendingType = type;
                 pendingMode = BackgroundSettings.modeOf(activity);
                 pendingName = displayName(activity, uri);
                 pendingFile = null;
                 copyThread = null;
             }
+            if (previous != null) {
+                previous.delete();
+            }
             if (type == BackgroundSettings.TYPE_NONE) {
                 return;
             }
 
-            final File file = new File(BackgroundSettings.mediaFile(activity, BackgroundSettings.modeOf(activity)).getPath() + ".pending");
+            // A file of its own for each pick, so that two copies never write to the same file.
+            final File file = new File(BackgroundSettings.mediaFile(activity, BackgroundSettings.modeOf(activity)).getPath()
+                    + ".pending" + pick);
             Thread thread = new Thread(() -> {
                 try (InputStream in = activity.getContentResolver().openInputStream(uri);
                      OutputStream out = new FileOutputStream(file)) {
@@ -70,10 +81,15 @@ public final class ThemeBuilderHook {
                         out.write(buffer, 0, read);
                     }
                     synchronized (ThemeBuilderHook.class) {
-                        pendingFile = file;
+                        if (pick == pickCount) {
+                            pendingFile = file;
+                            return;
+                        }
                     }
+                    file.delete();
                 } catch (Exception ex) {
                     Log.e(TAG, "Could not copy the picked file", ex);
+                    file.delete();
                 }
             }, "GboardThemeBuilderCopy");
             synchronized (ThemeBuilderHook.class) {
@@ -127,7 +143,7 @@ public final class ThemeBuilderHook {
             }
 
             File active = BackgroundSettings.mediaFile(context, slot);
-            active.delete();
+            // renameTo replaces the old file in one step, so the old background stays if the move fails.
             if (!pending.renameTo(active)) {
                 Log.e(TAG, "Could not move the picked file");
                 return;

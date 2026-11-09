@@ -13,8 +13,8 @@ import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstructio
 @Suppress("unused")
 val showAllClipboardHistoryPatch = bytecodePatch(
     name = "Show all clipboard history",
-    description = "The clipboard only shows the clips of the last 5 copies, and hides older ones for good. " +
-        "This shows all saved clips, up to Gboard's limit of about 100 unpinned clips.",
+    description = "The clipboard only shows the last 5 copies and hides older clips. " +
+        "This shows all saved clips, up to about 100 unpinned ones.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)

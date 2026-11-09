@@ -276,6 +276,8 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
         try {
             surface = new Surface(texture);
             MediaPlayer mediaPlayer = new MediaPlayer();
+            // Kept from the start, so that releasePlayer() in the catch below also frees it when setup fails.
+            player = mediaPlayer;
             mediaPlayer.setDataSource(loadedFile.getPath());
             mediaPlayer.setSurface(surface);
             mediaPlayer.setVolume(0f, 0f);
@@ -300,7 +302,6 @@ final class BackgroundMediaView extends FrameLayout implements TextureView.Surfa
                 return true;
             });
             mediaPlayer.prepareAsync();
-            player = mediaPlayer;
         } catch (Exception ex) {
             Log.e(TAG, "Could not start the video", ex);
             releasePlayer();

@@ -44,12 +44,6 @@ private val addSettingsSwitchPatch = resourcePatch(
                 setAttribute("android:persistent", "true")
                 setAttribute("android:key", PREFERENCE_KEY)
                 setAttribute("android:title", "数字を常に半角で入力")
-                setAttribute(
-                    "android:summary",
-                    "日本語入力中に数字キーで打った数字を、最初から半角にします。変換候補には全角も出ます。" +
-                        "数字のあとの「。」「、」は、そのまま「。」「、」にします。" +
-                        "切り替えたあとは、入力欄を開き直すと反映されます",
-                )
                 setAttribute("android:defaultValue", "true")
             }
 
@@ -61,10 +55,7 @@ private val addSettingsSwitchPatch = resourcePatch(
 @Suppress("unused")
 val halfWidthDigitsPatch = bytecodePatch(
     name = "Half-width digits in Japanese input",
-    description = "Digits typed in Japanese input are half width from the start, instead of full width. " +
-        "A Japanese period or comma typed after a digit stays as it is, and is not changed to " +
-        "the full width \".\" or \",\". " +
-        "Full width digits stay in the conversion candidates. " +
+    description = "Digits typed in Japanese input are half width from the start. " +
         "Adds a switch to Gboard settings > Keys.",
     default = true,
 ) {

@@ -107,16 +107,15 @@ public final class BackgroundPickerActivity extends Activity {
         });
         switchCard.addView(enabledSwitch);
 
-        TextView note = label("閉じた画面と開いた画面で、別の動画・画像を流せます。選んでいない画面には、もう一方の動画・画像が出ます。"
-                + "キーボードのテーマは、写真の背景（キーの後ろが透ける）にしてください。"
-                + "単色のテーマでは、動画や画像がキーの下に隠れます。動画は音なしで、くり返し再生します。");
+        TextView note = label("選んでいない画面には、もう一方の動画・画像が出ます。"
+                + "キーボードのテーマは写真の背景にしてください。単色だと、動画や画像がキーの下に隠れます。");
         note.setPadding(0, dp(12), 0, 0);
         switchCard.addView(note);
         content.addView(switchCard);
 
         // One card for each screen: the file, and the part that is shown.
         previews = new Preview[2];
-        String[] titles = {"閉じた画面（スマホの画面）", "開いた画面（広い画面）"};
+        String[] titles = {"閉じた画面", "開いた画面"};
         for (int mode = BackgroundSettings.MODE_SMALL; mode <= BackgroundSettings.MODE_LARGE; mode++) {
             final int screen = mode;
             LinearLayout screenCard = card();
@@ -132,7 +131,7 @@ public final class BackgroundPickerActivity extends Activity {
             status[mode].setPadding(0, dp(2), 0, dp(12));
             screenCard.addView(status[mode]);
 
-            Button pick = tonalButton("動画か画像を選ぶ");
+            Button pick = tonalButton("選ぶ");
             pick.setOnClickListener(v -> pickMedia(screen));
             screenCard.addView(pick);
 
@@ -175,7 +174,7 @@ public final class BackgroundPickerActivity extends Activity {
             TextView hint = label("指でずらして場所を決め、2本の指かバーで拡大します");
             screenCard.addView(hint);
 
-            Button delete = tonalButton("この画面の動画・画像を消す");
+            Button delete = tonalButton("消す");
             delete.setTextColor(palette.danger);
             delete.setOnClickListener(v -> {
                 BackgroundSettings.deleteMedia(this, screen);
@@ -191,7 +190,7 @@ public final class BackgroundPickerActivity extends Activity {
 
         // A card with what the keyboard and the theme builder did, to find out why a background does not show.
         LinearLayout logCard = card();
-        logCard.addView(label("状態（うまく動かないときの調査用）"));
+        logCard.addView(label("状態"));
         logView = new TextView(this);
         logView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         logView.setTextColor(palette.subText);

@@ -11,9 +11,8 @@ private const val DEFAULT_LIMIT = 200_000
 @Suppress("unused")
 val raiseClipboardTextLimitPatch = bytecodePatch(
     name = "Raise clipboard text limit",
-    description = "Gboard cuts the text of a clip to 20,000 characters when it saves it, so only that much " +
-        "can be pasted. This raises the limit to 200,000 characters. " +
-        "Very long texts may fail to load, as the clips are kept in a database with a row size limit.",
+    description = "Gboard cuts a clip to 20,000 characters when it saves it. " +
+        "This raises the limit to 200,000. Very long clips may fail to load.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)

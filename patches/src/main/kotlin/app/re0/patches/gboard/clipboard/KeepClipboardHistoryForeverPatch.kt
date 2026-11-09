@@ -13,8 +13,7 @@ private const val TIME_LIMIT_MILLISECONDS = 100L * 365 * 24 * 60 * 60 * 1000
 val keepClipboardHistoryForeverPatch = bytecodePatch(
     name = "Keep clipboard history forever",
     description = "Unpinned clips are no longer deleted after 1 hour, and stay until you delete them. " +
-        "Gboard still keeps at most about 100 unpinned clips. " +
-        "Overrides the setting that \"Extend clipboard history\" adds.",
+        "Gboard still keeps at most about 100 unpinned clips.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)
