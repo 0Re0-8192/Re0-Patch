@@ -13,7 +13,7 @@ Android の Gboard（Google のキーボード）を、[Morphe](https://morphe.s
 | Video and GIF in the theme builder | ON | テーマの新規作成で動画・GIFも選べる |
 | Better theme image quality | ON | テーマの画像の読み込み上限を2048pxに上げる |
 | Clipboard key | ON | どのキーボードからでもクリップボードを開くキーを足す |
-| Arrow keys in number keyboards | ON | 数字・電話のキーボードに左右の矢印キーの行を足す |
+| Arrow keys in number keyboards | ON | 数字・電話・数字パスワードのキーボードに左右の矢印キーの行を、スマホ向けの英字キーボードにスペース横の矢印キーを足す |
 | Half-width digits in Japanese input | ON | 日本語入力中の数字を半角にする |
 | Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
 | Show all clipboard history | ON | クリップボードの履歴を保存されている全件出す |

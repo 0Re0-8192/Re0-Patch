@@ -30,14 +30,15 @@ private const val DEFAULT_ICON_LOCATION = "@id/id_0x7f0b03c0"
 private const val CLIPBOARD_KEYBOARD = "clipboard"
 
 /**
- * Layouts with the bottom row of the letter keyboards, which have the space key and the arrow keys.
+ * Layouts with the bottom row of the letter keyboards, which have the space key and the arrow keys (the rows for
+ * phones have them from the number keyboard patch).
  * The first group is rows, the second is a column on the right side, with the delete key on top
  * and the enter key at the bottom.
  */
 private val ROW_LAYOUT_FILES = listOf(
     "res/7-_.xml", "res/7Ud.xml", "res/Mj0.xml", "res/SEn.xml", "res/Xcf.xml",
     "res/iy4.xml", "res/sdL.xml", "res/wgL.xml", "res/zMO.xml", "res/zRn.xml",
-)
+) + PHONE_ROW_LAYOUT_FILES // These get the arrow keys from the other patch, which runs first.
 private val COLUMN_LAYOUT_FILES = listOf("res/5nF.xml", "res/Iiq.xml", "res/GeB.xml", "res/O1t.xml")
 
 /**
