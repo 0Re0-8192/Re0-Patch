@@ -1,8 +1,11 @@
 package app.re0.extension.gboard;
 
 import android.content.Context;
+import android.inputmethodservice.InputMethodService;
 import android.util.Log;
+import android.view.inputmethod.InputConnection;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.lang.reflect.Method;
@@ -37,7 +40,14 @@ public final class KarukanHook {
     private static Method mozcEval;
     private static File root;
 
+    /** The input method service, for the text before the cursor. Set when the service is created. */
+    private static volatile InputMethodService service;
+
     private KarukanHook() {
+    }
+
+    public static void setService(InputMethodService inputMethodService) {
+        service = inputMethodService;
     }
 
     public static byte[] evalCommand(byte[] command) {
@@ -51,7 +61,11 @@ public final class KarukanHook {
         }
         if (state > 0 && !new File(root, "off.flag").exists()) {
             try {
-                reply = KarukanNative.handle(command);
+                byte[] withContext = withContext(command);
+                if (withContext != command && new File(root, "dump.flag").exists()) {
+                    log("ctx", withContext);
+                }
+                reply = KarukanNative.handle(withContext);
             } catch (Throwable t) {
                 fail("handle", t);
             }
@@ -79,6 +93,156 @@ public final class KarukanHook {
             log("karukan", reply);
         }
         return reply;
+    }
+
+    /** How many characters before the cursor are given to the engine. The engine keeps the tail of it. */
+    private static final int CONTEXT_LENGTH = 200;
+
+    private static final int TYPE_SEND_KEY = 3;
+
+    /**
+     * Gboard sends the Mozc input with an empty context. The text that is already in the field before the cursor
+     * is the context of the conversion, so it is read from the input connection and put into the context of the
+     * input (Command.input.context.preceding_text). Only for a key that is sent, and only when the context is empty.
+     * The original command is returned when anything is not as expected.
+     */
+    private static byte[] withContext(byte[] command) {
+        try {
+            InputMethodService ime = service;
+            if (ime == null) {
+                return command;
+            }
+            byte[] input = null;
+            int inputStart = -1;
+            int inputEnd = -1;
+            int position = 0;
+            while (position < command.length) {
+                int fieldStart = position;
+                long tag = readVarint(command, position);
+                position = varintEnd(command, position);
+                int field = (int) (tag >>> 3);
+                int wire = (int) (tag & 7);
+                if (wire == 0) {
+                    position = varintEnd(command, position);
+                } else if (wire == 2) {
+                    int length = (int) readVarint(command, position);
+                    position = varintEnd(command, position);
+                    if (field == 1 && input == null) {
+                        input = java.util.Arrays.copyOfRange(command, position, position + length);
+                        inputStart = fieldStart;
+                        inputEnd = position + length;
+                    }
+                    position += length;
+                } else if (wire == 1) {
+                    position += 8;
+                } else if (wire == 5) {
+                    position += 4;
+                } else {
+                    return command;
+                }
+            }
+            if (input == null) {
+                return command;
+            }
+
+            ByteArrayOutputStream rebuilt = new ByteArrayOutputStream(input.length + 64);
+            boolean sendKey = false;
+            boolean hasContext = false;
+            position = 0;
+            while (position < input.length) {
+                int fieldStart = position;
+                long tag = readVarint(input, position);
+                position = varintEnd(input, position);
+                int field = (int) (tag >>> 3);
+                int wire = (int) (tag & 7);
+                int end;
+                if (wire == 0) {
+                    long value = readVarint(input, position);
+                    end = varintEnd(input, position);
+                    if (field == 1 && value == TYPE_SEND_KEY) {
+                        sendKey = true;
+                    }
+                } else if (wire == 2) {
+                    int length = (int) readVarint(input, position);
+                    int body = varintEnd(input, position);
+                    end = body + length;
+                    if (field == 6) {
+                        if (length > 0) {
+                            hasContext = true;
+                        } else {
+                            // An empty context is replaced below.
+                            position = end;
+                            continue;
+                        }
+                    }
+                } else if (wire == 1) {
+                    end = position + 8;
+                } else if (wire == 5) {
+                    end = position + 4;
+                } else {
+                    return command;
+                }
+                rebuilt.write(input, fieldStart, end - fieldStart);
+                position = end;
+            }
+            if (!sendKey || hasContext) {
+                return command;
+            }
+
+            InputConnection connection = ime.getCurrentInputConnection();
+            CharSequence before = connection == null ? null : connection.getTextBeforeCursor(CONTEXT_LENGTH, 0);
+            if (before == null || before.length() == 0) {
+                return command;
+            }
+            byte[] text = before.toString().getBytes(StandardCharsets.UTF_8);
+            ByteArrayOutputStream context = new ByteArrayOutputStream(text.length + 8);
+            writeVarint(context, (1 << 3) | 2);
+            writeVarint(context, text.length);
+            context.write(text, 0, text.length);
+            writeVarint(rebuilt, (6 << 3) | 2);
+            writeVarint(rebuilt, context.size());
+            rebuilt.write(context.toByteArray(), 0, context.size());
+
+            byte[] newInput = rebuilt.toByteArray();
+            ByteArrayOutputStream result = new ByteArrayOutputStream(command.length + newInput.length);
+            result.write(command, 0, inputStart);
+            writeVarint(result, (1 << 3) | 2);
+            writeVarint(result, newInput.length);
+            result.write(newInput, 0, newInput.length);
+            result.write(command, inputEnd, command.length - inputEnd);
+            return result.toByteArray();
+        } catch (Throwable t) {
+            Log.w(TAG, "No context", t);
+            return command;
+        }
+    }
+
+    private static long readVarint(byte[] bytes, int position) {
+        long value = 0;
+        int shift = 0;
+        while (true) {
+            int b = bytes[position++];
+            value |= (long) (b & 0x7f) << shift;
+            if ((b & 0x80) == 0) {
+                return value;
+            }
+            shift += 7;
+        }
+    }
+
+    private static int varintEnd(byte[] bytes, int position) {
+        while ((bytes[position++] & 0x80) != 0) {
+            // The end of the number is the first byte without the high bit.
+        }
+        return position;
+    }
+
+    private static void writeVarint(ByteArrayOutputStream out, long value) {
+        while ((value & ~0x7fL) != 0) {
+            out.write((int) ((value & 0x7f) | 0x80));
+            value >>>= 7;
+        }
+        out.write((int) value);
     }
 
     private static byte[] callMozc(byte[] command) {

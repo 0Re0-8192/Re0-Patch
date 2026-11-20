@@ -1,5 +1,6 @@
 package app.re0.patches.gboard.japanese
 
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.PatchException
@@ -103,6 +104,12 @@ val karukanPatch = bytecodePatch(
         method.replaceInstruction(
             callIndex,
             "invoke-static { v$commandRegister }, $EXTENSION_CLASS->evalCommand([B)[B",
+        )
+
+        // The extension reads the text before the cursor from the service, as the context of the conversion.
+        InputMethodServiceCreateFingerprint.method.addInstructions(
+            0,
+            "invoke-static { p0 }, $EXTENSION_CLASS->setService(Landroid/inputmethodservice/InputMethodService;)V",
         )
     }
 }

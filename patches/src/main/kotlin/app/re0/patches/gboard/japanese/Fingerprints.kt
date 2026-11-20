@@ -19,3 +19,15 @@ internal object EvalCommandFingerprint : Fingerprint(
         methodCall(definingClass = "/MozcJni;", name = "evalCommand"),
     ),
 )
+
+/**
+ * GoogleInputMethodService.onCreate(): the input method service of Gboard. The patch hands the service to the
+ * extension, which reads the text before the cursor from it, as the context of the conversion.
+ */
+internal object InputMethodServiceCreateFingerprint : Fingerprint(
+    name = "onCreate",
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+    returnType = "V",
+    parameters = listOf(),
+    strings = listOf("GoogleInputMethodService.onCreate"),
+)
