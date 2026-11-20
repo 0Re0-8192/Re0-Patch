@@ -141,8 +141,11 @@ public final class KarukanHook {
     private static File installLibrary(Context context) throws Exception {
         File lib = new File(context.getFilesDir(), "libkarukan_jni.so");
         File stamp = new File(context.getFilesDir(), "libkarukan_jni.stamp");
-        String version = String.valueOf(
-                context.getPackageManager().getPackageInfo(context.getPackageName(), 0).lastUpdateTime);
+        // A libkarukan_jni.so next to the models wins over the one in the app (for trying a new
+        // build without patching again).
+        File override = new File(root, "libkarukan_jni.so");
+        String version = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).lastUpdateTime
+                + (override.isFile() ? ":" + override.length() + ":" + override.lastModified() : "");
         String copied = stamp.isFile() ? new String(java.nio.file.Files.readAllBytes(stamp.toPath()),
                 StandardCharsets.UTF_8) : "";
         if (!lib.isFile() || !version.equals(copied)) {
@@ -150,7 +153,8 @@ public final class KarukanHook {
             lib.setWritable(true);
             //noinspection ResultOfMethodCallIgnored
             lib.delete();
-            try (java.io.InputStream in = context.getAssets().open("karukan_jni.so");
+            try (java.io.InputStream in = override.isFile() ? new java.io.FileInputStream(override)
+                    : context.getAssets().open("karukan_jni.so");
                  FileOutputStream out = new FileOutputStream(lib)) {
                 byte[] buffer = new byte[1 << 16];
                 int n;
