@@ -141,6 +141,12 @@ val clipboardKeyPatch = resourcePatch(
         KEYBOARD_DEFINITION_FILES.forEach { path ->
             document(path).use { document -> addKeyMappingToNumberBodies(document, path) }
         }
+        document(PASSWORD_KEYBOARD_DEFINITION_FILE).use { document ->
+            // Beside the arrow keys, which the other patch mapped in the branch for phones.
+            document.elements("mapping").filter { it.getAttribute("view_id") == LEFT_ARROW_VIEW_ID }.forEach { arrow ->
+                arrow.parentNode.insertBefore(newMapping(document), arrow.nextSibling)
+            }
+        }
     }
 }
 
@@ -349,8 +355,7 @@ private fun addKeyMapping(document: Document, path: String) {
  * The keyboard definitions of the number and phone keyboards map the arrow keys themselves.
  */
 private fun addKeyMappingToNumberBodies(document: Document, path: String) {
-    val bodies = document.elements("view")
-        .filter { it.getAttribute("type") == "body" && it.getAttribute("layout") in NUMBER_LAYOUT_REFERENCES }
+    val bodies = numberKeyBodies(document)
     if (bodies.isEmpty()) {
         throw PatchException("Could not find a keyboard body with a number layout in $path")
     }

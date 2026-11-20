@@ -12,7 +12,7 @@ import app.re0.patches.gboard.shared.Constants.COMPATIBILITY_GBOARD
  * This is added to the version code, so the cache of a new generation is used. Increase it when a patch changes
  * a keyboard definition again.
  */
-private const val KEYBOARD_CACHE_GENERATION = 2
+private const val KEYBOARD_CACHE_GENERATION = 3
 
 /**
  * Renews the cache of keyboard definitions.

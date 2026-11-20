@@ -82,7 +82,45 @@ val numberKeyboardArrowsPatch = resourcePatch(
         KEYBOARD_DEFINITION_FILES.forEach { path ->
             document(path).use { document -> addArrowKeys(document, path) }
         }
+
+        document(PASSWORD_KEYBOARD_DEFINITION_FILE).use { document -> addArrowKeysToPasswordKeyboard(document) }
     }
+}
+
+/**
+ * The definition of the password letter keyboard. It loads the arrow keys only for large tablets, and the keyboards
+ * for phones have the (gone) views for them from the bottom rows, so it gets the arrow keys for the other devices.
+ */
+internal const val PASSWORD_KEYBOARD_DEFINITION_FILE = "res/iIv.xml"
+private const val PASSWORD_PHONE_KEYS_DEFINITION = "@xml/xml_0x7f170f00"
+
+internal fun passwordPhoneBranch(document: Document): Element {
+    val branches = document.getElementsByTagName("else").let { nodes ->
+        (0 until nodes.length).map { nodes.item(it) as Element }
+    }.filter { branch ->
+        (0 until branch.childNodes.length).map { branch.childNodes.item(it) }.filterIsInstance<Element>()
+            .any { it.tagName == "softkeys" && it.getAttribute("href") == PASSWORD_PHONE_KEYS_DEFINITION }
+    }
+    return branches.singleOrNull()
+        ?: throw PatchException("Expected one branch for phones in $PASSWORD_KEYBOARD_DEFINITION_FILE, found ${branches.size}")
+}
+
+private fun addArrowKeysToPasswordKeyboard(document: Document) {
+    val branch = passwordPhoneBranch(document)
+    branch.appendChild(document.createElement("softkeys").apply { setAttribute("href", ARROW_KEYS_DEFINITION) })
+    branch.appendChild(
+        document.createElement("key_mapping").apply {
+            listOf(LEFT_ARROW_KEY_ID to LEFT_ARROW_VIEW_ID, RIGHT_ARROW_KEY_ID to RIGHT_ARROW_VIEW_ID)
+                .forEach { (keyId, viewId) ->
+                    appendChild(
+                        document.createElement("mapping").apply {
+                            setAttribute("key_id", keyId)
+                            setAttribute("view_id", viewId)
+                        },
+                    )
+                }
+        },
+    )
 }
 
 /**
@@ -155,9 +193,7 @@ private fun addArrowRow(document: Document, path: String) {
  * Loads the definition of the arrow keys, and puts them into the two new views.
  */
 private fun addArrowKeys(document: Document, path: String) {
-    val bodies = document.getElementsByTagName("view").let { views ->
-        (0 until views.length).map { views.item(it) as Element }
-    }.filter { it.getAttribute("type") == "body" && it.getAttribute("layout") in NUMBER_LAYOUT_REFERENCES }
+    val bodies = numberKeyBodies(document)
 
     if (bodies.isEmpty()) {
         throw PatchException("Could not find a keyboard body with a number layout in $path")
@@ -182,4 +218,25 @@ private fun addArrowKeys(document: Document, path: String) {
         }
         body.appendChild(keyMapping)
     }
+}
+
+/**
+ * The views that hold the keys of the number layouts. Where a body names the layout but has nothing in it (the number
+ * password keyboard), the keys are defined in the body without a layout that follows, and that is the one that counts:
+ * what is added to the first one is not used.
+ */
+internal fun numberKeyBodies(document: Document): List<Element> {
+    val views = document.getElementsByTagName("view").let { nodes ->
+        (0 until nodes.length).map { nodes.item(it) as Element }
+    }.filter { it.getAttribute("type") == "body" }
+
+    val bodies = views.filter { it.getAttribute("layout") in NUMBER_LAYOUT_REFERENCES }
+    val plain = views.filter { !it.hasAttribute("layout") }.firstOrNull()
+    val empty = bodies.filter { body ->
+        (0 until body.childNodes.length).none { body.childNodes.item(it) is Element }
+    }
+    if (empty.isEmpty() || plain == null) {
+        return bodies
+    }
+    return bodies.filter { it !in empty } + plain
 }
