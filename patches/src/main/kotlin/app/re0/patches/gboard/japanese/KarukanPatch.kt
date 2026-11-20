@@ -23,6 +23,9 @@ private const val EXTENSION_CLASS = "Lapp/re0/extension/gboard/KarukanHook;"
  */
 private const val LIBRARY_ASSET = "assets/karukan_jni.so"
 
+/** The same library inside the patch file (patches/src/main/resources). */
+private const val BUNDLED_LIBRARY = "app/re0/karukan/karukan_jni.so"
+
 @Suppress("unused")
 val karukanLibraryPatch = resourcePatch(
     name = "karukan library",
@@ -32,22 +35,30 @@ val karukanLibraryPatch = resourcePatch(
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)
 
+    // Optional: the library is bundled in the patch file. Setting this uses another build instead.
     val library by filePathOption(
         key = "nativeLibrary",
         title = "karukan library",
-        description = "libkarukan_jni.so for arm64-v8a, built from karukan-im/android.",
-        required = true,
+        description = "Another libkarukan_jni.so (arm64-v8a) to use instead of the bundled one.",
+        required = false,
         allowedExtensions = listOf("so"),
     )
 
     execute {
-        val source = File(library ?: throw PatchException("The karukan library is not set"))
-        if (!source.isFile) {
-            throw PatchException("The karukan library does not exist: $source")
-        }
         val target = get(LIBRARY_ASSET, copy = false)
         target.parentFile.mkdirs()
-        source.copyTo(target, overwrite = true)
+        val path = library
+        if (!path.isNullOrBlank()) {
+            val source = File(path)
+            if (!source.isFile) {
+                throw PatchException("The karukan library does not exist: $source")
+            }
+            source.copyTo(target, overwrite = true)
+        } else {
+            val bundled = object {}.javaClass.classLoader?.getResourceAsStream(BUNDLED_LIBRARY)
+                ?: throw PatchException("The karukan library is not bundled in this patch file")
+            bundled.use { input -> target.outputStream().use { input.copyTo(it) } }
+        }
     }
 }
 

@@ -126,3 +126,6 @@ node_modules/
 # Ignore IDEA files
 .idea/
 local.properties
+
+# built native library of the karukan engine (put here before building the patch file)
+patches/src/main/resources/app/re0/karukan/*.so
