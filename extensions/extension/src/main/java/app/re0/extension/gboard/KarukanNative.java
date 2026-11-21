@@ -26,4 +26,29 @@ final class KarukanNative {
      * @return a reply amended by the bridge, or null to keep Mozc's reply.
      */
     static native byte[] observe(byte[] command, byte[] mozcReply);
+
+    /**
+     * Hybrid: after {@link #handle} answered the command, the command to give Mozc in the background
+     * (the same key, or a revert when the karukan composition has ended).
+     *
+     * @return the command for Mozc, or null when there is nothing to send.
+     */
+    static native byte[] shadowCommand(byte[] command);
+
+    /**
+     * Hybrid: Mozc's answer to the command of {@link #shadowCommand}.
+     *
+     * @return the karukan reply with the candidates of Mozc added, or null to keep it.
+     */
+    static native byte[] shadowReply(byte[] mozcReply);
+
+    /**
+     * Hybrid: called before a command that karukan did not take goes to Mozc.
+     *
+     * @return a revert command to send to Mozc first, or null.
+     */
+    static native byte[] shadowRevert(byte[] command);
+
+    /** Turns the Mozc candidates on or off. */
+    static native void setHybrid(boolean on);
 }

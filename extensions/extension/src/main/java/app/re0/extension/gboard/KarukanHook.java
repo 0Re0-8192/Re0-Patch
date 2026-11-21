@@ -28,7 +28,12 @@ import java.nio.charset.StandardCharsets;
  * config/config.toml                                       (written on the first run)
  * dump.flag                                                (create to log every command to logcat)
  * off.flag                                                 (create to turn karukan off)
+ * nohybrid.flag                                            (create to leave out the Mozc candidates)
+ * nodownload.flag                                          (create to keep the first-run fetch off)
+ * download_metered.flag                                    (create to allow the fetch on mobile data)
+ * keepconfig.flag                                          (create to keep a hand-edited config.toml)
  * </pre>
+ * The models and the dictionary are fetched on the first run when they are missing ({@link KarukanDownload}).
  */
 @SuppressWarnings("unused")
 public final class KarukanHook {
@@ -36,7 +41,7 @@ public final class KarukanHook {
     private static final String MOZC_JNI = "com.google.android.apps.inputmethod.libs.mozc.session.MozcJni";
 
     /** 0: not tried yet, 1: running, -1: not available. */
-    private static int state;
+    private static volatile int state; // read outside the lock; the download thread resets it
     private static Method mozcEval;
     private static File root;
 
@@ -66,6 +71,9 @@ public final class KarukanHook {
                     log("ctx", withContext);
                 }
                 reply = KarukanNative.handle(withContext);
+                if (reply != null && hybrid) {
+                    reply = addMozcCandidates(command, reply);
+                }
             } catch (Throwable t) {
                 fail("handle", t);
             }
@@ -75,6 +83,9 @@ public final class KarukanHook {
             log("in ", command);
         }
         if (reply == null) {
+            if (state > 0 && hybrid) {
+                clearMozcComposition(command);
+            }
             reply = callMozc(command);
             if (state > 0) {
                 try {
@@ -93,6 +104,41 @@ public final class KarukanHook {
             log("karukan", reply);
         }
         return reply;
+    }
+
+    /**
+     * Hybrid: while karukan composes, Mozc gets the same keys in the background and its candidates (symbols,
+     * emoji, ...) are added after karukan's. Off when the library is too old to have it, after an error in it,
+     * or when {@code nohybrid.flag} exists.
+     */
+    private static volatile boolean hybrid;
+
+    private static byte[] addMozcCandidates(byte[] command, byte[] reply) {
+        try {
+            byte[] shadow = KarukanNative.shadowCommand(command);
+            if (shadow == null) {
+                return reply;
+            }
+            byte[] merged = KarukanNative.shadowReply(callMozc(shadow));
+            return merged != null ? merged : reply;
+        } catch (Throwable t) {
+            hybrid = false;
+            Log.e(TAG, "The Mozc candidates are off after an error", t);
+            return reply;
+        }
+    }
+
+    /** Before a command goes to Mozc for real: clears the composition that Mozc holds in the background. */
+    private static void clearMozcComposition(byte[] command) {
+        try {
+            byte[] revert = KarukanNative.shadowRevert(command);
+            if (revert != null) {
+                callMozc(revert);
+            }
+        } catch (Throwable t) {
+            hybrid = false;
+            Log.e(TAG, "The Mozc candidates are off after an error", t);
+        }
     }
 
     /** How many characters before the cursor are given to the engine. The engine keeps the tail of it. */
@@ -275,10 +321,17 @@ public final class KarukanHook {
                 base = context.getFilesDir();
             }
             root = new File(base, "karukan");
-            File small = new File(root, "models/small/jinen-v2-small-Q8_0.gguf");
+            File small = new File(root, KarukanDownload.SMALL_PATH);
+            if (!small.isFile()) {
+                small = new File(root, KarukanDownload.LEGACY_SMALL_PATH); // pushed by adb, or an earlier release
+            }
             File xsmall = new File(root, "models/xsmall/jinen-v2-xsmall-Q8_0.gguf");
+            if (!KarukanDownload.complete(root)) {
+                // fetch what is missing (Mozc answers meanwhile), then set up again
+                KarukanDownload.start(context, root, KarukanHook::retrySetUp);
+            }
             if (!small.isFile() && !xsmall.isFile()) {
-                Log.i(TAG, "No model in " + root + ", Mozc is used");
+                Log.i(TAG, "No model in " + root + " yet, Mozc is used");
                 return;
             }
             File config = new File(root, "config");
@@ -286,11 +339,19 @@ public final class KarukanHook {
             config.mkdirs();
             data.mkdirs();
             File toml = new File(config, "config.toml");
-            if (!toml.exists()) {
+            // written at every start from the files there are (a model fetched since the last start is
+            // picked up); keepconfig.flag keeps a hand-edited one
+            if (!toml.exists() || !new File(root, "keepconfig.flag").exists()) {
                 writeConfig(toml, small, xsmall);
             }
             System.load(installLibrary(context).getAbsolutePath());
             KarukanNative.init(data.getAbsolutePath(), config.getAbsolutePath());
+            try {
+                hybrid = !new File(root, "nohybrid.flag").exists();
+                KarukanNative.setHybrid(hybrid);
+            } catch (UnsatisfiedLinkError e) {
+                hybrid = false; // a library without the Mozc candidates
+            }
             state = 1;
             Log.i(TAG, "karukan is on, files in " + root);
         } catch (Throwable t) {
@@ -335,8 +396,18 @@ public final class KarukanHook {
         return lib;
     }
 
+    /** After the first-run fetch: set up again, unless karukan already runs (then the new files wait for a restart). */
+    static void retrySetUp() {
+        synchronized (KarukanHook.class) {
+            if (state < 0) {
+                state = 0;
+            }
+        }
+    }
+
     private static void writeConfig(File toml, File small, File xsmall) throws Exception {
         StringBuilder sb = new StringBuilder();
+        sb.append("# written by the karukan patch at every start (keepconfig.flag keeps a hand-edited one)\n");
         sb.append("[models]\n");
         String main = small.isFile() ? "jinen-small" : "jinen-xsmall";
         if (small.isFile()) {
@@ -349,6 +420,8 @@ public final class KarukanHook {
         sb.append("model = \"").append(main).append("\"\n");
         sb.append("light_model = \"").append(xsmall.isFile() ? "jinen-xsmall" : main).append("\"\n");
         sb.append("n_threads = 4\n");
+        // the engine's default; written out so a library built before it was raised from 10 uses it too
+        sb.append("context_chars = 25\n");
         try (FileOutputStream out = new FileOutputStream(toml)) {
             out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
         }
