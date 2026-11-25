@@ -17,8 +17,9 @@ import java.nio.charset.StandardCharsets;
  * The patch replaces the call {@code MozcJni.evalCommand(bytes)} in Gboard with
  * {@link #evalCommand(byte[])}. The bytes are a serialized Mozc {@code Command}. The karukan
  * engine answers the typing of romaji (a composition belongs to one engine from its first key
- * until it is empty again). Everything else, the other keyboards, and the case that karukan
- * is not set up, go to Mozc, so Gboard keeps working.
+ * until it is empty again). The other keyboards (flick, 12 keys) are composed by Mozc, and the
+ * engine converts the kana Mozc composed: its candidates come before Mozc's. Everything else,
+ * and the case that karukan is not set up, go to Mozc, so Gboard keeps working.
  * <p>
  * Files are in the app's external files directory, {@code Android/data/<package>/files/karukan}:
  * <pre>
@@ -122,9 +123,22 @@ public final class KarukanHook {
             byte[] merged = KarukanNative.shadowReply(callMozc(shadow));
             return merged != null ? merged : reply;
         } catch (Throwable t) {
-            hybrid = false;
+            hybridOff();
             Log.e(TAG, "The Mozc candidates are off after an error", t);
             return reply;
+        }
+    }
+
+    /**
+     * The library is told too: it follows a flick composition only while the hybrid exchange runs, since that
+     * exchange reverts Mozc's kana after a karukan candidate is committed.
+     */
+    private static void hybridOff() {
+        hybrid = false;
+        try {
+            KarukanNative.setHybrid(false);
+        } catch (Throwable ignored) {
+            // the flag above is what matters here
         }
     }
 
@@ -136,7 +150,7 @@ public final class KarukanHook {
                 callMozc(revert);
             }
         } catch (Throwable t) {
-            hybrid = false;
+            hybridOff();
             Log.e(TAG, "The Mozc candidates are off after an error", t);
         }
     }
