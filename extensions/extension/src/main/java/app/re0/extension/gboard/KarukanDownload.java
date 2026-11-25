@@ -87,6 +87,7 @@ final class KarukanDownload {
             while (true) {
                 try {
                     if (unmetered(context) || new File(root, "download_metered.flag").exists()) {
+                        KarukanNotice.show(KarukanNotice.FETCHING);
                         for (Item item : ITEMS) {
                             fetch(root, item);
                         }
@@ -94,11 +95,14 @@ final class KarukanDownload {
                         new File(root, LEGACY_SMALL_PATH).delete();
                         Log.i(TAG, "models and dictionary are in place");
                         done.run();
+                        KarukanNotice.show(KarukanNotice.READY);
                         return;
                     }
                     Log.i(TAG, "waiting for an unmetered network to fetch the models");
+                    KarukanNotice.show(KarukanNotice.WAITING);
                 } catch (Throwable e) {
                     Log.w(TAG, "fetching the models failed, trying again later", e);
+                    KarukanNotice.show(KarukanNotice.FAILED);
                 }
                 try {
                     Thread.sleep(RETRY_MS);

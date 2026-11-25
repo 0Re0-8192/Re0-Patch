@@ -56,7 +56,12 @@ public final class KarukanHook {
         service = inputMethodService;
     }
 
+    static InputMethodService service() {
+        return service;
+    }
+
     public static byte[] evalCommand(byte[] command) {
+        KarukanNotice.flush();
         byte[] reply = null;
         if (state >= 0) {
             synchronized (KarukanHook.class) {
@@ -444,6 +449,7 @@ public final class KarukanHook {
     private static void fail(String where, Throwable t) {
         state = -1;
         Log.e(TAG, "karukan is off after an error in " + where, t);
+        KarukanNotice.show(KarukanNotice.STOPPED);
     }
 
     private static void log(String tag, byte[] bytes) {
