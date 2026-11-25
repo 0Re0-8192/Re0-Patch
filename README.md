@@ -18,6 +18,7 @@ Android の Gboard（Google のキーボード）を、[Morphe](https://morphe.s
 | Keep clipboard history forever | ON | クリップボードの履歴を時間で消さない |
 | Show all clipboard history | ON | クリップボードの履歴を保存されている全件出す |
 | Raise clipboard text limit | ON | クリップボード1件の文字数上限を20万字に上げる |
+| Settings backup | ON | 設定・テーマ・単語リスト・クリップボード・学習・背景をファイルに書き出し、入れ直したあとに読み込む |
 | Change app name | ON | アプリ名を `Gboard Re0` にする |
 | Extend clipboard history | OFF | 履歴の保持期間を最大24時間から選べる設定を出す（上の「消さない」と同時には効かない） |
 | Override flags | OFF | Gboard のフラグを上書きする（上級者向け。[docs/FLAGS.md](docs/FLAGS.md)） |
